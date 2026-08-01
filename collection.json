@@ -1,0 +1,5 @@
+{
+  "games": [
+    { "id": "circle-tap", "path": "games/circle-tap" }
+  ]
+}
