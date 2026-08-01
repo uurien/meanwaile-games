@@ -72,6 +72,6 @@ For now, the viewport your game is designed for is **440×470px** — that's the
 
 ## Testing locally
 
-- Add an entry for your game to `collection.json` (`{ "id": "your-game-id", "path": "games/your-game-id" }`), then serve the repo root with any static server, e.g. `npx serve .` or `python3 -m http.server`, and open `test/index.html`. It lists every game in `collection.json` and loads the selected one into an iframe, driving the same `game:pause`/`game:resume` contract the real host uses — good enough to sanity-check rendering, input, and the pause/resume overlay. It won't work opened directly via `file://`, since it fetches the manifests with `fetch()`.
+- Add an entry for your game to `collection.json` (`{ "id": "your-game-id", "path": "games/your-game-id" }`), then serve the repo root with any static server, e.g. `npx serve .` or `python3 -m http.server`, and open `index.html`. It lists every game in `collection.json` and loads the selected one into an iframe, driving the same `game:pause`/`game:resume` contract the real host uses — good enough to sanity-check rendering, input, and the pause/resume overlay. It won't work opened directly via `file://`, since it fetches the manifests with `fetch()`.
 - To test the real host behavior instead, drop your folder into a local checkout of the main [meanwaile](https://github.com/uurien/meanwaile) repo under `src/games/`, and add a temporary entry to `src/games/registry.js` pointing at it.
 - See `games/circle-tap/` in this repo for a working example.

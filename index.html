@@ -251,18 +251,18 @@
       overlayEl.hidden = false;
       pauseBtnEl.disabled = true;
 
-      frameEl.src = `../${game.path}/${game.entry}`;
+      frameEl.src = `${game.path}/${game.entry}`;
     }
 
     async function loadManifest(path) {
-      const res = await fetch(`../${path}/game.json`);
+      const res = await fetch(`${path}/game.json`);
       if (!res.ok) throw new Error(`Failed to load ${path}/game.json (${res.status})`);
       const manifest = await res.json();
       return { ...manifest, path };
     }
 
     async function init() {
-      const res = await fetch('../collection.json');
+      const res = await fetch('collection.json');
       const collection = await res.json();
 
       const games = await Promise.all(
@@ -282,7 +282,7 @@
         card.dataset.id = game.id;
 
         const img = document.createElement('img');
-        img.src = `../${game.path}/${game.preview}`;
+        img.src = `${game.path}/${game.preview}`;
         img.alt = '';
 
         const meta = document.createElement('div');
