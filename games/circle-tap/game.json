@@ -1,0 +1,8 @@
+{
+  "id": "circle-tap",
+  "name": "CircleTap",
+  "tagline": "Tap the circles",
+  "description": "Circles light up on a 3x3 board — tap each one before it fades. Miss one or let it expire and it's game over.",
+  "entry": "index.html",
+  "preview": "preview.png"
+}

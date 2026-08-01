@@ -6,7 +6,7 @@ This repo is the source of the games offered inside the [Meanwaile](https://mean
 
 ## Adding a game
 
-1. Fork this repo and create a new folder for your game, e.g. `your-game-id/`.
+1. Fork this repo and create a new folder for your game under `games/`, e.g. `games/your-game-id/`.
 2. Inside it, add:
    - `index.html` — the entry point loaded into the game view.
    - `game.json` — a small manifest (see below).
@@ -23,6 +23,7 @@ Everything your game needs must live inside your folder — no CDN scripts, no f
   "id": "your-game-id",
   "name": "Your Game",
   "tagline": "One short line describing it",
+  "description": "A couple of sentences explaining how the game is played.",
   "entry": "index.html",
   "preview": "preview.png"
 }
@@ -31,6 +32,7 @@ Everything your game needs must live inside your folder — no CDN scripts, no f
 - `id` — unique, lowercase, kebab-case. Used to identify the game and prevent it from being installed twice.
 - `name` — display name shown in the hub.
 - `tagline` — short line shown under the name on the game's card.
+- `description` — a couple of sentences explaining how the game is played, shown on the game's detail view.
 - `entry` — relative path to the HTML file loaded into the game view.
 - `preview` — relative path to the preview image.
 
@@ -70,7 +72,6 @@ For now, the viewport your game is designed for is **440×470px** — that's the
 
 ## Testing locally
 
-There's no tooling in this repo yet to preview a submission standalone. The simplest way to check your game today:
-
-- Open your `index.html` directly in a browser to sanity-check rendering and input.
-- To test the real pause/resume/overlay behavior, drop your folder into a local checkout of the main [meanwaile](https://github.com/uurien/meanwaile) repo under `src/games/`, and add a temporary entry to `src/games/registry.js` pointing at it.
+- Add an entry for your game to `collection.json` (`{ "id": "your-game-id", "path": "games/your-game-id" }`), then serve the repo root with any static server, e.g. `npx serve .` or `python3 -m http.server`, and open `test/index.html`. It lists every game in `collection.json` and loads the selected one into an iframe, driving the same `game:pause`/`game:resume` contract the real host uses — good enough to sanity-check rendering, input, and the pause/resume overlay. It won't work opened directly via `file://`, since it fetches the manifests with `fetch()`.
+- To test the real host behavior instead, drop your folder into a local checkout of the main [meanwaile](https://github.com/uurien/meanwaile) repo under `src/games/`, and add a temporary entry to `src/games/registry.js` pointing at it.
+- See `games/circle-tap/` in this repo for a working example.
