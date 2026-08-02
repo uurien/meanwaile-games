@@ -1,0 +1,9 @@
+{
+  "id": "meanwaile-runner",
+  "name": "Meanwaile Runner",
+  "version": "1.0.0",
+  "tagline": "Run and jump",
+  "description": "An endless runner: jump between platforms and dodge spikes and aliens as the pace keeps picking up. One hit ends the run.",
+  "entry": "index.html",
+  "preview": "preview.png"
+}
