@@ -1,5 +1,5 @@
 {
   "games": [
-    { "id": "circle-tap", "path": "games/circle-tap" }
+    { "id": "circle-tap", "path": "games/circle-tap", "version": "1.0.0" }
   ]
 }
