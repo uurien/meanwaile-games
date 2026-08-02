@@ -22,6 +22,7 @@ Everything your game needs must live inside your folder — no CDN scripts, no f
 {
   "id": "your-game-id",
   "name": "Your Game",
+  "version": "1.0.0",
   "tagline": "One short line describing it",
   "description": "A couple of sentences explaining how the game is played.",
   "entry": "index.html",
@@ -31,6 +32,7 @@ Everything your game needs must live inside your folder — no CDN scripts, no f
 
 - `id` — unique, lowercase, kebab-case. Used to identify the game and prevent it from being installed twice.
 - `name` — display name shown in the hub.
+- `version` — semver string for this game's bundle. Bump it whenever you tag a new release (see below).
 - `tagline` — short line shown under the name on the game's card.
 - `description` — a couple of sentences explaining how the game is played, shown on the game's detail view.
 - `entry` — relative path to the HTML file loaded into the game view.
@@ -75,3 +77,13 @@ For now, the viewport your game is designed for is **440×470px** — that's the
 - Add an entry for your game to `collection.json` (`{ "id": "your-game-id", "path": "games/your-game-id" }`), then serve the repo root with any static server, e.g. `npx serve .` or `python3 -m http.server`, and open `index.html`. It lists every game in `collection.json` and loads the selected one into an iframe, driving the same `game:pause`/`game:resume` contract the real host uses — good enough to sanity-check rendering, input, and the pause/resume overlay. It won't work opened directly via `file://`, since it fetches the manifests with `fetch()`.
 - To test the real host behavior instead, drop your folder into a local checkout of the main [meanwaile](https://github.com/uurien/meanwaile) repo under `src/games/`, and add a temporary entry to `src/games/registry.js` pointing at it.
 - See `games/circle-tap/` in this repo for a working example.
+
+## Releasing a game
+
+Games are released one at a time, not all at once — releasing one game doesn't rebuild or re-release the others.
+
+1. Bump `version` in the game's `game.json` (semver), and update the matching `version` in the root `collection.json`. Merge that to `main` first.
+2. Go to the [Release game](../../actions/workflows/release-game.yml) workflow under the Actions tab, click "Run workflow", and type the game's id (or `gh workflow run release-game.yml -f game=circle-tap`).
+3. The workflow checks that id exists in `collection.json`, reads the version straight from that game's `game.json`, and fails immediately if a release for `<game-id>@<version>` already exists (bump the version and re-run if so). Otherwise it zips just that game's folder and publishes a GitHub Release tagged `<game-id>@<version>` with a `<game-id>-<version>.zip` asset — nothing else in the repo is touched.
+
+Meanwaile fetches `collection.json` from `main` to know which games, ids, and versions exist, then downloads the matching release asset (`https://github.com/uurien/meanwaile-games/releases/download/<game-id>@<version>/<game-id>-<version>.zip`) to install or update a game.

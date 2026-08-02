@@ -1,0 +1,57 @@
+name: Release game
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: Game id to release (must match an id in collection.json)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GAME: ${{ inputs.game }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate game id against collection.json
+        run: |
+          if ! node -e "process.exit(require('./collection.json').games.some(g => g.id === process.env.GAME) ? 0 : 1)"; then
+            echo "\"$GAME\" is not a game id listed in collection.json." >&2
+            exit 1
+          fi
+
+      - name: Read version from game.json
+        id: manifest
+        run: |
+          GAME_DIR="games/$GAME"
+          VERSION=$(node -p "require('./$GAME_DIR/game.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$GAME@$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if this game+version was already released
+        run: |
+          TAG="${{ steps.manifest.outputs.tag }}"
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q .; then
+            echo "$TAG already exists — bump version in games/$GAME/game.json first." >&2
+            exit 1
+          fi
+
+      - name: Zip game bundle
+        id: zip
+        run: |
+          ASSET="$GAME-${{ steps.manifest.outputs.version }}.zip"
+          (cd "games/$GAME" && zip -r "$GITHUB_WORKSPACE/$ASSET" . -x '*.DS_Store')
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.manifest.outputs.tag }}
+          name: ${{ steps.manifest.outputs.tag }}
+          files: ${{ steps.zip.outputs.asset }}
