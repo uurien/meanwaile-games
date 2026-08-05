@@ -1,0 +1,9 @@
+{
+  "id": "meanwaile-maze",
+  "name": "Meanwaile Maze",
+  "version": "0.1.0",
+  "tagline": "Find a way out",
+  "description": "Guide a tiny terminal through a maze of server racks. Use the arrow keys or WASD to reach the exit.",
+  "entry": "index.html",
+  "preview": "preview.png"
+}
