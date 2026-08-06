@@ -3,8 +3,11 @@ import {
   createMapModel,
   createRoundClock,
   createRuntimeState,
+  floorDetailAt,
+  floorTextureChunks,
   generateMaze,
   movePlayer,
+  rackShadowEdges,
   rackTileKey,
   resolveDirection,
   transitionRuntime,
@@ -13,16 +16,18 @@ import {
 const GAME_WIDTH = 440;
 const GAME_HEIGHT = 470;
 const MAZE_SIZE = 31;
-const TILE_SIZE = 26;
+const TILE_SIZE = 78;
+const TILE_DETAIL_SCALE = TILE_SIZE / 26;
 const BOARD_X = 0;
 const BOARD_Y = 0;
 const WORLD_SIZE = MAZE_SIZE * TILE_SIZE;
 const MOVE_INTERVAL_MS = 92;
-const MAP_PREVIEW_MS = 10_000;
+const MAP_PREVIEW_MS = 2_000;
 const MAP_CELL_SIZE = 22;
 const MAP_X = 55;
 const MAP_Y = 61;
 const RACK_FAMILIES = ['floor-below', 'rack-below'];
+const SHADOW_BANDS = 5;
 
 const completeEl = document.getElementById('round-complete');
 const finalTimeEl = document.getElementById('final-time');
@@ -46,23 +51,101 @@ function formatTime(milliseconds) {
   return `${minutes}:${seconds}`;
 }
 
-function drawFloor(graphics, x, y) {
-  graphics.fillStyle(0x090d0e);
+function drawExit(graphics, x, y) {
+  graphics.fillStyle(0x17341e, 0.58);
   graphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-  graphics.lineStyle(1, 0x12191a, 1);
-  graphics.strokeRect(x + 0.5, y + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
-  graphics.fillStyle(0x172022);
-  graphics.fillRect(x + 5, y + 5, 2, 2);
-  graphics.fillRect(x + 19, y + 19, 2, 2);
+  graphics.lineStyle(TILE_DETAIL_SCALE, 0x74ef79, 1);
+  graphics.strokeRect(
+    x + 2.5 * TILE_DETAIL_SCALE,
+    y + 2.5 * TILE_DETAIL_SCALE,
+    TILE_SIZE - 5 * TILE_DETAIL_SCALE,
+    TILE_SIZE - 5 * TILE_DETAIL_SCALE,
+  );
+  graphics.fillStyle(0xc9ffd0);
+  graphics.fillRect(
+    x + 8 * TILE_DETAIL_SCALE,
+    y + 6 * TILE_DETAIL_SCALE,
+    10 * TILE_DETAIL_SCALE,
+    14 * TILE_DETAIL_SCALE,
+  );
 }
 
-function drawExit(graphics, x, y) {
-  graphics.fillStyle(0x17341e);
-  graphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-  graphics.lineStyle(1, 0x74ef79, 1);
-  graphics.strokeRect(x + 2.5, y + 2.5, TILE_SIZE - 5, TILE_SIZE - 5);
-  graphics.fillStyle(0xc9ffd0);
-  graphics.fillRect(x + 8, y + 6, 10, 14);
+function drawFloorGrille(graphics, column, row) {
+  const centerX = BOARD_X + (column + 0.5) * TILE_SIZE;
+  const centerY = BOARD_Y + (row + 0.5) * TILE_SIZE;
+  const horizontal = (column + row) % 2 === 0;
+  const width = (horizontal ? 11 : 5) * TILE_DETAIL_SCALE;
+  const height = (horizontal ? 5 : 11) * TILE_DETAIL_SCALE;
+  const x = centerX - width / 2;
+  const y = centerY - height / 2;
+
+  graphics.fillStyle(0x101313, 0.92);
+  graphics.fillRect(x, y, width, height);
+  graphics.lineStyle(TILE_DETAIL_SCALE / 2, 0x394141, 0.8);
+  graphics.strokeRect(x, y, width, height);
+  graphics.lineStyle(TILE_DETAIL_SCALE / 2, 0x090b0b, 0.9);
+  const bars = 5;
+  for (let index = 1; index <= bars; index += 1) {
+    const ratio = index / (bars + 1);
+    if (horizontal) {
+      graphics.lineBetween(
+        x + TILE_DETAIL_SCALE,
+        y + height * ratio,
+        x + width - TILE_DETAIL_SCALE,
+        y + height * ratio,
+      );
+    } else {
+      graphics.lineBetween(
+        x + width * ratio,
+        y + TILE_DETAIL_SCALE,
+        x + width * ratio,
+        y + height - TILE_DETAIL_SCALE,
+      );
+    }
+  }
+}
+
+function drawRackShadows(graphics, edges) {
+  const bandSize = TILE_DETAIL_SCALE;
+  for (const edge of edges) {
+    const x = BOARD_X + edge.column * TILE_SIZE;
+    const y = BOARD_Y + edge.row * TILE_SIZE;
+    for (let band = 0; band < SHADOW_BANDS; band += 1) {
+      const alpha = 0.24 * ((SHADOW_BANDS - band) / SHADOW_BANDS) ** 2;
+      graphics.fillStyle(0x000000, alpha);
+      if (edge.side === 'top') {
+        graphics.fillRect(x, y - (band + 1) * bandSize, TILE_SIZE, bandSize);
+      } else if (edge.side === 'right') {
+        graphics.fillRect(x + TILE_SIZE + band * bandSize, y, bandSize, TILE_SIZE);
+      } else if (edge.side === 'bottom') {
+        graphics.fillRect(x, y + TILE_SIZE + band * bandSize, TILE_SIZE, bandSize);
+      } else {
+        graphics.fillRect(x - (band + 1) * bandSize, y, bandSize, TILE_SIZE);
+      }
+    }
+  }
+}
+
+function createFloor(scene) {
+  for (const chunk of floorTextureChunks(
+    WORLD_SIZE,
+    WORLD_SIZE,
+    GAME_WIDTH,
+    GAME_HEIGHT,
+  )) {
+    const floor = scene.add.tileSprite(
+      chunk.x,
+      chunk.y,
+      chunk.width,
+      chunk.height,
+      'floor-resin',
+    )
+      .setOrigin(0, 0)
+      .setScrollFactor(1)
+      .setDepth(-20);
+    floor.tilePositionX = chunk.tilePositionX;
+    floor.tilePositionY = chunk.tilePositionY;
+  }
 }
 
 function createTerminal(scene, position) {
@@ -81,7 +164,9 @@ function createTerminal(scene, position) {
   terminal.fillRect(1, 3, 4, 4);
 
   const center = cellCenter(position);
-  return scene.add.container(center.x, center.y, [terminal]).setScale(TILE_SIZE / 16);
+  return scene.add.container(center.x, center.y, [terminal])
+    .setScale(TILE_SIZE / 16)
+    .setDepth(2);
 }
 
 function mapPoint(position) {
@@ -159,6 +244,9 @@ class MazeScene extends Phaser.Scene {
     if (!this.textures.exists('map-paper')) {
       this.load.image('map-paper', 'assets/map-paper-template.png');
     }
+    if (!this.textures.exists('floor-resin')) {
+      this.load.image('floor-resin', 'assets/floor-resin.png');
+    }
     for (const family of RACK_FAMILIES) {
       for (let variant = 1; variant <= 5; variant += 1) {
         const key = `rack-${family}-${variant}`;
@@ -180,9 +268,11 @@ class MazeScene extends Phaser.Scene {
     this.nextMoveAt = 0;
 
     this.cameras.main.setBackgroundColor('#050708');
-    const board = this.add.graphics();
-    board.fillStyle(0x050708);
-    board.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    createFloor(this);
+    const shadows = this.add.graphics().setDepth(-10);
+    const floorDetails = this.add.graphics().setDepth(-5);
+    drawRackShadows(shadows, rackShadowEdges(this.maze));
+    let exitPosition;
 
     for (let row = 0; row < this.maze.length; row += 1) {
       for (let column = 0; column < this.maze[row].length; column += 1) {
@@ -192,13 +282,24 @@ class MazeScene extends Phaser.Scene {
         if (cell === '#') {
           this.add.image(x, y, rackTileKey(this.maze, column, row))
             .setOrigin(0, 0)
-            .setDisplaySize(TILE_SIZE, TILE_SIZE);
-        } else if (cell === 'E') {
-          drawExit(board, x, y);
+            .setDisplaySize(TILE_SIZE, TILE_SIZE)
+            .setDepth(0);
         } else {
-          drawFloor(board, x, y);
+          if (
+            cell !== 'S' &&
+            cell !== 'E' &&
+            floorDetailAt(column, row) === 'grille'
+          ) {
+            drawFloorGrille(floorDetails, column, row);
+          }
+          if (cell === 'E') exitPosition = { x, y };
         }
       }
+    }
+
+    if (exitPosition) {
+      const exit = this.add.graphics().setDepth(1);
+      drawExit(exit, exitPosition.x, exitPosition.y);
     }
 
     this.add.text(20, 11, 'MAZE 01', {

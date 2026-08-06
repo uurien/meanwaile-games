@@ -7,8 +7,12 @@ import {
   createMapModel,
   createRoundClock,
   createRuntimeState,
+  floorDetailAt,
+  floorDetailForRoll,
+  floorTextureChunks,
   generateMaze,
   movePlayer,
+  rackShadowEdges,
   rackTileKey,
   resolveDirection,
   transitionRuntime,
@@ -224,6 +228,53 @@ test('rack variants are deterministic and use the full five-tile set', () => {
     'rack-floor-below-5',
   ]);
   assert.equal(rackTileKey(layout, 3, 0), rackTileKey(layout, 3, 0));
+});
+
+test('the continuous floor only adds a grille two percent of the time', () => {
+  const details = Array.from({ length: 100 }, (_, roll) => floorDetailForRoll(roll));
+
+  assert.equal(details.filter((detail) => detail === null).length, 98);
+  assert.equal(details.filter((detail) => detail === 'grille').length, 2);
+  assert.equal(floorDetailAt(7, 4), floorDetailAt(7, 4));
+  assert.ok([null, 'grille'].includes(floorDetailAt(7, 5)));
+});
+
+test('rack shadows are emitted only along edges touching open floor', () => {
+  const layout = [
+    '#####',
+    '#...#',
+    '#.#.#',
+    '#...#',
+    '#####',
+  ];
+  const centerEdges = rackShadowEdges(layout).filter(
+    (edge) => edge.column === 2 && edge.row === 2,
+  );
+
+  assert.deepEqual(
+    centerEdges.map((edge) => edge.side).sort(),
+    ['bottom', 'left', 'right', 'top'],
+  );
+});
+
+test('floor texture chunks cover the world in aligned viewport-sized pieces', () => {
+  const chunks = floorTextureChunks(10, 7, 4, 3);
+
+  assert.deepEqual(chunks, [
+    { x: 0, y: 0, width: 4, height: 3, tilePositionX: 0, tilePositionY: 0 },
+    { x: 4, y: 0, width: 4, height: 3, tilePositionX: 4, tilePositionY: 0 },
+    { x: 8, y: 0, width: 2, height: 3, tilePositionX: 8, tilePositionY: 0 },
+    { x: 0, y: 3, width: 4, height: 3, tilePositionX: 0, tilePositionY: 3 },
+    { x: 4, y: 3, width: 4, height: 3, tilePositionX: 4, tilePositionY: 3 },
+    { x: 8, y: 3, width: 2, height: 3, tilePositionX: 8, tilePositionY: 3 },
+    { x: 0, y: 6, width: 4, height: 1, tilePositionX: 0, tilePositionY: 6 },
+    { x: 4, y: 6, width: 4, height: 1, tilePositionX: 4, tilePositionY: 6 },
+    { x: 8, y: 6, width: 2, height: 1, tilePositionX: 8, tilePositionY: 6 },
+  ]);
+  assert.equal(
+    chunks.reduce((area, chunk) => area + chunk.width * chunk.height, 0),
+    70,
+  );
 });
 
 test('a generated maze creates a 15 by 15 logical map and connects start to exit', () => {

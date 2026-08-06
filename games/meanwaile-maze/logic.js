@@ -252,6 +252,60 @@ export function rackTileKey(maze, column, row) {
   return `rack-${family}-${variant}`;
 }
 
+export function floorDetailForRoll(roll) {
+  const normalizedRoll = ((Math.floor(roll) % 100) + 100) % 100;
+  return normalizedRoll < 98 ? null : 'grille';
+}
+
+export function floorDetailAt(column, row) {
+  let hash = Math.imul(column + 1, 374_761_393);
+  hash ^= Math.imul(row + 1, 668_265_263);
+  hash = Math.imul(hash ^ (hash >>> 13), 1_274_126_177);
+  const roll = ((hash ^ (hash >>> 16)) >>> 0) % 100;
+  return floorDetailForRoll(roll);
+}
+
+export function rackShadowEdges(maze) {
+  const directions = [
+    { column: 0, row: -1, side: 'top' },
+    { column: 1, row: 0, side: 'right' },
+    { column: 0, row: 1, side: 'bottom' },
+    { column: -1, row: 0, side: 'left' },
+  ];
+  const edges = [];
+
+  for (let row = 0; row < maze.length; row += 1) {
+    for (let column = 0; column < maze[row].length; column += 1) {
+      if (maze[row][column] !== '#') continue;
+      for (const direction of directions) {
+        const neighbor = maze[row + direction.row]?.[column + direction.column];
+        if (neighbor && neighbor !== '#') {
+          edges.push({ column, row, side: direction.side });
+        }
+      }
+    }
+  }
+
+  return edges;
+}
+
+export function floorTextureChunks(worldWidth, worldHeight, chunkWidth, chunkHeight) {
+  const chunks = [];
+  for (let y = 0; y < worldHeight; y += chunkHeight) {
+    for (let x = 0; x < worldWidth; x += chunkWidth) {
+      chunks.push({
+        x,
+        y,
+        width: Math.min(chunkWidth, worldWidth - x),
+        height: Math.min(chunkHeight, worldHeight - y),
+        tilePositionX: x,
+        tilePositionY: y,
+      });
+    }
+  }
+  return chunks;
+}
+
 export function createMapModel(maze) {
   const physicalHeight = maze.length;
   const physicalWidth = maze[0]?.length ?? 0;

@@ -46,10 +46,15 @@ test('the entry point loads Phaser and game code locally with no network depende
       const assetUrl = new URL(`assets/racks/${family}-${variant}.png`, gameRoot);
       await access(assetUrl);
       const png = await readFile(assetUrl);
-      assert.equal(png.readUInt32BE(16), 26);
-      assert.equal(png.readUInt32BE(20), 26);
+      assert.equal(png.readUInt32BE(16), 78);
+      assert.equal(png.readUInt32BE(20), 78);
     }
   }
+
+  const floor = await readFile(new URL('assets/floor-resin.png', gameRoot));
+  assert.equal(floor.readUInt32BE(16), 1024);
+  assert.equal(floor.readUInt32BE(20), 1024);
+  await assert.rejects(access(new URL('assets/floors/floor-1.png', gameRoot)));
 
   const paper = await readFile(
     new URL('assets/map-paper-template.png', gameRoot),
@@ -67,6 +72,16 @@ test('the original rack artwork is kept with the game', async () => {
   assert.equal(master.readUInt32BE(16), 1536);
   assert.equal(master.readUInt32BE(20), 1024);
   await access(new URL('source-art/README.md', gameRoot));
+});
+
+test('the continuous resin floor source and approved concept are kept with the game', async () => {
+  const master = await readFile(
+    new URL('source-art/floor-resin-master.png', gameRoot),
+  );
+
+  assert.equal(master.readUInt32BE(16), master.readUInt32BE(20));
+  assert.ok(master.readUInt32BE(16) >= 1024);
+  await access(new URL('source-art/floor-resin-concept.png', gameRoot));
 });
 
 test('the map paper template is preserved with a transparent background', async () => {
@@ -91,9 +106,15 @@ test('the Phaser scene uses the Meanwaile viewport and pause contract', async ()
   assert.match(source, /this\.load\.image/);
   assert.match(source, /this\.add\.image/);
   assert.match(source, /rackTileKey/);
+  assert.match(source, /floor-resin/);
+  assert.match(source, /tileSprite/);
+  assert.match(source, /floorTextureChunks/);
+  assert.match(source, /rackShadowEdges/);
+  assert.match(source, /floorDetailAt/);
+  assert.doesNotMatch(source, /this\.floor\.tilePosition/);
   assert.match(source, /const MAZE_SIZE = 31/);
-  assert.match(source, /const TILE_SIZE = 26/);
-  assert.match(source, /const MAP_PREVIEW_MS = 10_000/);
+  assert.match(source, /const TILE_SIZE = 78/);
+  assert.match(source, /const MAP_PREVIEW_MS = 2_000/);
   assert.match(source, /createMapModel/);
   assert.doesNotMatch(source, /x:\s*1,\s*y:\s*MAZE_SIZE - 2/);
   assert.match(source, /startFollow/);
