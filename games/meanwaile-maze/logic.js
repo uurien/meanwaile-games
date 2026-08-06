@@ -229,6 +229,50 @@ export function resolveDirection(pressedKeys) {
   return null;
 }
 
+export function playerFrameForDirection(direction) {
+  if (direction.y > 0) return 0;
+  if (direction.x < 0) return 1;
+  if (direction.x > 0) return 2;
+  return 3;
+}
+
+export function advanceContinuousPosition(current, target, speed, deltaMs) {
+  if (!Number.isFinite(speed) || speed <= 0) {
+    throw new Error('Movement speed must be a positive finite number');
+  }
+
+  const availableMs = Math.max(0, deltaMs);
+  const deltaX = target.x - current.x;
+  const deltaY = target.y - current.y;
+  const distance = Math.hypot(deltaX, deltaY);
+  if (distance === 0) {
+    return {
+      position: { x: target.x, y: target.y },
+      reachedTarget: true,
+      remainingMs: availableMs,
+    };
+  }
+
+  const travelDistance = speed * availableMs;
+  if (travelDistance < distance) {
+    const ratio = travelDistance / distance;
+    return {
+      position: {
+        x: current.x + deltaX * ratio,
+        y: current.y + deltaY * ratio,
+      },
+      reachedTarget: false,
+      remainingMs: 0,
+    };
+  }
+
+  return {
+    position: { x: target.x, y: target.y },
+    reachedTarget: true,
+    remainingMs: Math.max(0, availableMs - distance / speed),
+  };
+}
+
 export function movePlayer(maze, position, direction) {
   const target = {
     x: position.x + direction.x,

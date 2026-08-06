@@ -43,3 +43,20 @@ current walls.
 
 `floor-tiles-master.png` is the superseded five-tile blue-gray proposal. It is
 kept only as design history and is no longer shipped as runtime assets.
+
+## Character concepts
+
+- `character-concepts-robots-humans.png` preserves the five robot and human
+  explorations, each in four directions.
+- `character-concepts-hoodies-segways.png` preserves the five operator, hoodie,
+  and Segway explorations, each in four directions.
+- `hooded-segway-four-directions.png` is the unscaled source row selected for
+  the first playable character.
+- `hooded-segway-chroma-master.png` preserves the high-resolution ImageGen
+  background-extraction result before transparency processing.
+- `hooded-segway-transparent-master.png` is the transparent high-resolution
+  master used for runtime exports.
+
+The runtime sheet is `../assets/characters/hooded-segway.png`: four transparent
+64×64 frames ordered down, left, right, and up. Phaser displays them at 80% of
+the 78×78 gameplay tile height.

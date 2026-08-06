@@ -84,6 +84,30 @@ test('the continuous resin floor source and approved concept are kept with the g
   await access(new URL('source-art/floor-resin-concept.png', gameRoot));
 });
 
+test('the selected character is bundled and every character concept is preserved', async () => {
+  const player = await readFile(
+    new URL('assets/characters/hooded-segway.png', gameRoot),
+  );
+
+  assert.equal(player.readUInt32BE(16), 256);
+  assert.equal(player.readUInt32BE(20), 64);
+  assert.equal(player[25], 6);
+
+  for (const sheet of [
+    'character-concepts-robots-humans.png',
+    'character-concepts-hoodies-segways.png',
+  ]) {
+    const source = await readFile(new URL(`source-art/${sheet}`, gameRoot));
+    assert.equal(source.readUInt32BE(16), 1254);
+    assert.equal(source.readUInt32BE(20), 1254);
+  }
+
+  const transparentMaster = await readFile(
+    new URL('source-art/hooded-segway-transparent-master.png', gameRoot),
+  );
+  assert.equal(transparentMaster[25], 6);
+});
+
 test('the map paper template is preserved with a transparent background', async () => {
   const template = await readFile(
     new URL('source-art/map-paper-template.png', gameRoot),
@@ -111,6 +135,20 @@ test('the Phaser scene uses the Meanwaile viewport and pause contract', async ()
   assert.match(source, /floorTextureChunks/);
   assert.match(source, /rackShadowEdges/);
   assert.match(source, /floorDetailAt/);
+  assert.match(source, /load\.spritesheet\('player-hooded-segway'/);
+  assert.match(source, /frameWidth:\s*64/);
+  assert.match(source, /frameHeight:\s*64/);
+  assert.match(source, /playerFrameForDirection/);
+  assert.match(source, /const PLAYER_SIZE = Math\.round\(TILE_SIZE \* 0\.8\)/);
+  assert.match(source, /const MOVE_DURATION_MS = 140/);
+  assert.match(source, /advanceContinuousPosition/);
+  assert.match(source, /advanceMovement/);
+  assert.match(source, /while \(remainingMs > 0/);
+  assert.doesNotMatch(source, /this\.tweens\.add/);
+  assert.doesNotMatch(source, /onComplete/);
+  assert.doesNotMatch(source, /Sine\.Out/);
+  assert.doesNotMatch(source, /nextMoveAt/);
+  assert.doesNotMatch(source, /MOVE_INTERVAL_MS - 20/);
   assert.doesNotMatch(source, /this\.floor\.tilePosition/);
   assert.match(source, /const MAZE_SIZE = 31/);
   assert.match(source, /const TILE_SIZE = 78/);

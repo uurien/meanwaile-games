@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  advanceContinuousPosition,
   advanceRoundClock,
   chooseMazeEndpoints,
   createMapModel,
@@ -12,6 +13,7 @@ import {
   floorTextureChunks,
   generateMaze,
   movePlayer,
+  playerFrameForDirection,
   rackShadowEdges,
   rackTileKey,
   resolveDirection,
@@ -177,6 +179,43 @@ test('arrow keys and WASD resolve to the same four directions', () => {
 
 test('no direction is emitted when no movement key was just pressed', () => {
   assert.equal(resolveDirection({}), null);
+});
+
+test('the hooded Segway uses one stable frame for each facing direction', () => {
+  assert.equal(playerFrameForDirection({ x: 0, y: 1 }), 0);
+  assert.equal(playerFrameForDirection({ x: -1, y: 0 }), 1);
+  assert.equal(playerFrameForDirection({ x: 1, y: 0 }), 2);
+  assert.equal(playerFrameForDirection({ x: 0, y: -1 }), 3);
+});
+
+test('continuous movement carries unused frame time into the next tile', () => {
+  assert.deepEqual(
+    advanceContinuousPosition(
+      { x: 0, y: 0 },
+      { x: 78, y: 0 },
+      78 / 140,
+      70,
+    ),
+    {
+      position: { x: 39, y: 0 },
+      reachedTarget: false,
+      remainingMs: 0,
+    },
+  );
+
+  assert.deepEqual(
+    advanceContinuousPosition(
+      { x: 0, y: 0 },
+      { x: 78, y: 0 },
+      78 / 140,
+      150,
+    ),
+    {
+      position: { x: 78, y: 0 },
+      reachedTarget: true,
+      remainingMs: 10,
+    },
+  );
 });
 
 test('the player moves one grid cell through a corridor', () => {
