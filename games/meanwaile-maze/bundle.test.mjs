@@ -167,7 +167,7 @@ test('the Phaser scene uses the Meanwaile viewport and pause contract', async ()
   assert.doesNotMatch(source, /this\.floor\.tilePosition/);
   assert.match(source, /const MAZE_SIZE = 31/);
   assert.match(source, /const TILE_SIZE = 78/);
-  assert.match(source, /const MAP_PREVIEW_MS = 2_000/);
+  assert.match(source, /const MAP_PREVIEW_MS = 6_000/);
   assert.match(source, /createMapModel/);
   assert.doesNotMatch(source, /x:\s*1,\s*y:\s*MAZE_SIZE - 2/);
   assert.match(source, /startFollow/);
