@@ -64,16 +64,12 @@ the 78×78 gameplay tile height.
 ## Exit elevator
 
 `elevator-door-master.png` and `elevator-floor-master.png` preserve the
-full-resolution ImageGen artwork for the exit. Their runtime exports live in
-`../assets/exit/` and are both exactly 78×78 pixels:
+full-resolution ImageGen artwork for a wall-mounted elevator exit that was
+explored but never shipped; no runtime export of either currently lives in
+`../assets/exit/`. `freight-lift.png` is the shipped one-tile, top-down exit:
+one continuous recessed platform, a dark pit gap, four corner guides, and
+restrained perimeter LEDs.
 
-- `elevator-door.png` is one full wall tile containing the closed elevator.
-- `elevator-floor.png` is one monolithic arrival tile marked only by perimeter
-  LEDs; it intentionally has no internal panel grid.
-- `freight-lift.png` is the one-tile, top-down alternative for exits without a
-  suitable wall: one continuous recessed platform, a dark pit gap, four corner
-  guides, and restrained perimeter LEDs.
-
-The runtime tiles were exported from their masters with a single Lanczos
-resample. Keep the masters when iterating so a future tile-size change never
-requires upscaling the 78×78 assets.
+The runtime tile was exported from its master with a single Lanczos resample.
+Keep the masters when iterating so a future tile-size change never requires
+upscaling the 78×78 asset.
