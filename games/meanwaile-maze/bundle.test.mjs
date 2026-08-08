@@ -56,6 +56,12 @@ test('the entry point loads Phaser and game code locally with no network depende
   assert.equal(floor.readUInt32BE(20), 1024);
   await assert.rejects(access(new URL('assets/floors/floor-1.png', gameRoot)));
 
+  const freightLift = await readFile(
+    new URL('assets/exit/freight-lift.png', gameRoot),
+  );
+  assert.equal(freightLift.readUInt32BE(16), 78);
+  assert.equal(freightLift.readUInt32BE(20), 78);
+
   const paper = await readFile(
     new URL('assets/map-paper-template.png', gameRoot),
   );
@@ -135,6 +141,15 @@ test('the Phaser scene uses the Meanwaile viewport and pause contract', async ()
   assert.match(source, /floorTextureChunks/);
   assert.match(source, /rackShadowEdges/);
   assert.match(source, /floorDetailAt/);
+  assert.match(
+    source,
+    /load\.image\('freight-lift', 'assets\/exit\/freight-lift\.png'\)/,
+  );
+  assert.match(
+    source,
+    /add\.image\(exitPosition\.x, exitPosition\.y, 'freight-lift'\)/,
+  );
+  assert.doesNotMatch(source, /function drawExit/);
   assert.match(source, /load\.spritesheet\('player-hooded-segway'/);
   assert.match(source, /frameWidth:\s*64/);
   assert.match(source, /frameHeight:\s*64/);

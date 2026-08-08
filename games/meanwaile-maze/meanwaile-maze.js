@@ -55,25 +55,6 @@ function formatTime(milliseconds) {
   return `${minutes}:${seconds}`;
 }
 
-function drawExit(graphics, x, y) {
-  graphics.fillStyle(0x17341e, 0.58);
-  graphics.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-  graphics.lineStyle(TILE_DETAIL_SCALE, 0x74ef79, 1);
-  graphics.strokeRect(
-    x + 2.5 * TILE_DETAIL_SCALE,
-    y + 2.5 * TILE_DETAIL_SCALE,
-    TILE_SIZE - 5 * TILE_DETAIL_SCALE,
-    TILE_SIZE - 5 * TILE_DETAIL_SCALE,
-  );
-  graphics.fillStyle(0xc9ffd0);
-  graphics.fillRect(
-    x + 8 * TILE_DETAIL_SCALE,
-    y + 6 * TILE_DETAIL_SCALE,
-    10 * TILE_DETAIL_SCALE,
-    14 * TILE_DETAIL_SCALE,
-  );
-}
-
 function drawFloorGrille(graphics, column, row) {
   const centerX = BOARD_X + (column + 0.5) * TILE_SIZE;
   const centerY = BOARD_Y + (row + 0.5) * TILE_SIZE;
@@ -237,6 +218,9 @@ class MazeScene extends Phaser.Scene {
     if (!this.textures.exists('floor-resin')) {
       this.load.image('floor-resin', 'assets/floor-resin.png');
     }
+    if (!this.textures.exists('freight-lift')) {
+      this.load.image('freight-lift', 'assets/exit/freight-lift.png');
+    }
     if (!this.textures.exists('player-hooded-segway')) {
       this.load.spritesheet('player-hooded-segway', 'assets/characters/hooded-segway.png', {
         frameWidth: 64,
@@ -294,8 +278,10 @@ class MazeScene extends Phaser.Scene {
     }
 
     if (exitPosition) {
-      const exit = this.add.graphics().setDepth(1);
-      drawExit(exit, exitPosition.x, exitPosition.y);
+      this.add.image(exitPosition.x, exitPosition.y, 'freight-lift')
+        .setOrigin(0, 0)
+        .setDisplaySize(TILE_SIZE, TILE_SIZE)
+        .setDepth(1);
     }
 
     this.add.text(20, 11, 'MAZE 01', {
