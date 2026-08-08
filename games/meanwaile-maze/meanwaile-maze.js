@@ -194,7 +194,7 @@ function createMapPreview(scene, maze) {
   drawMapMarker(drawing, map.start, 0x258a4a, 'terminal');
   drawMapMarker(drawing, map.exit, 0xb86816, 'exit');
 
-  const countdown = scene.add.text(GAME_WIDTH / 2, 416, '10', {
+  const countdown = scene.add.text(GAME_WIDTH / 2, 416, String(Math.ceil(MAP_PREVIEW_MS / 1000)), {
     color: '#514d46',
     fontFamily: 'monospace',
     fontSize: '13px',
