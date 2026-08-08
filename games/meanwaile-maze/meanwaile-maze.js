@@ -284,11 +284,6 @@ class MazeScene extends Phaser.Scene {
         .setDepth(1);
     }
 
-    this.add.text(20, 11, 'MAZE 01', {
-      color: '#5af06d',
-      fontFamily: 'monospace',
-      fontSize: '15px',
-    }).setScrollFactor(0).setDepth(100);
     this.timer = this.add.text(GAME_WIDTH / 2, 11, '00:00', {
       color: '#5af06d',
       fontFamily: 'monospace',
@@ -296,11 +291,6 @@ class MazeScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
     this.add.text(20, 447, 'WASD / ARROWS', {
       color: '#438e51',
-      fontFamily: 'monospace',
-      fontSize: '11px',
-    }).setScrollFactor(0).setDepth(100);
-    this.add.text(381, 447, 'EXIT', {
-      color: '#75e981',
       fontFamily: 'monospace',
       fontSize: '11px',
     }).setScrollFactor(0).setDepth(100);
