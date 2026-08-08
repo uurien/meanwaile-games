@@ -44,43 +44,39 @@ export function chooseMazeEndpoints(width, height, rng = Math.random) {
 }
 
 function openLogicalNeighbors(grid, position, width, height) {
+  const physicalWidth = width * 2 + 1;
   const center = physicalCenter(position);
-  return LOGICAL_DIRECTIONS.map((direction) => ({
-    x: position.x + direction.x,
-    y: position.y + direction.y,
-    direction,
-  })).filter(({ x, y, direction }) => {
-    if (x < 0 || x >= width || y < 0 || y >= height) return false;
-    return grid[center.y + direction.y][center.x + direction.x] !== '#';
-  });
+  const neighbors = [];
+  for (const direction of LOGICAL_DIRECTIONS) {
+    const x = position.x + direction.x;
+    const y = position.y + direction.y;
+    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+    const wallIndex = (center.y + direction.y) * physicalWidth + (center.x + direction.x);
+    if (grid[wallIndex] === 0) continue;
+    neighbors.push({ x, y, direction });
+  }
+  return neighbors;
 }
 
 function createDepthFirstCandidate(width, height, start, rng) {
   const physicalWidth = width * 2 + 1;
   const physicalHeight = height * 2 + 1;
-  const grid = Array.from(
-    { length: physicalHeight },
-    () => Array(physicalWidth).fill('#'),
-  );
+  const grid = new Uint8Array(physicalWidth * physicalHeight);
   const stack = [start];
   const visited = new Set([logicalIndex(start, width)]);
   const startCenter = physicalCenter(start);
-  grid[startCenter.y][startCenter.x] = '.';
+  grid[startCenter.y * physicalWidth + startCenter.x] = 1;
 
   while (stack.length > 0) {
     const current = stack[stack.length - 1];
-    const candidates = LOGICAL_DIRECTIONS.map((direction) => ({
-      x: current.x + direction.x,
-      y: current.y + direction.y,
-      direction,
-    })).filter(
-      ({ x, y }) =>
-        x >= 0 &&
-        x < width &&
-        y >= 0 &&
-        y < height &&
-        !visited.has(logicalIndex({ x, y }, width)),
-    );
+    const candidates = [];
+    for (const direction of LOGICAL_DIRECTIONS) {
+      const x = current.x + direction.x;
+      const y = current.y + direction.y;
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      if (visited.has(y * width + x)) continue;
+      candidates.push({ x, y, direction });
+    }
 
     if (candidates.length === 0) {
       stack.pop();
@@ -94,8 +90,8 @@ function createDepthFirstCandidate(width, height, start, rng) {
     const next = candidates[choiceIndex];
     const currentCenter = physicalCenter(current);
     const nextCenter = physicalCenter(next);
-    grid[currentCenter.y + next.direction.y][currentCenter.x + next.direction.x] = '.';
-    grid[nextCenter.y][nextCenter.x] = '.';
+    grid[(currentCenter.y + next.direction.y) * physicalWidth + (currentCenter.x + next.direction.x)] = 1;
+    grid[nextCenter.y * physicalWidth + nextCenter.x] = 1;
     visited.add(logicalIndex(next, width));
     stack.push({ x: next.x, y: next.y });
   }
@@ -105,12 +101,12 @@ function createDepthFirstCandidate(width, height, start, rng) {
 
 function logicalTreeParents(grid, width, height, start) {
   const pending = [start];
-  const parents = new Map([[positionKey(start), null]]);
+  const parents = new Map([[logicalIndex(start, width), null]]);
 
   for (let index = 0; index < pending.length; index += 1) {
     const current = pending[index];
     for (const neighbor of openLogicalNeighbors(grid, current, width, height)) {
-      const key = positionKey(neighbor);
+      const key = logicalIndex(neighbor, width);
       if (parents.has(key)) continue;
       parents.set(key, current);
       pending.push({ x: neighbor.x, y: neighbor.y });
@@ -120,12 +116,12 @@ function logicalTreeParents(grid, width, height, start) {
   return parents;
 }
 
-function reconstructLogicalPath(parents, target) {
+function reconstructLogicalPath(parents, target, width) {
   const path = [];
   let current = target;
   while (current) {
     path.push(current);
-    current = parents.get(positionKey(current));
+    current = parents.get(logicalIndex(current, width));
   }
   return path.reverse();
 }
@@ -145,17 +141,17 @@ function cornerBranchDepth(solution, cornerPath) {
 
 function nearestLeafDepth(grid, width, height, junction, branch) {
   const pending = [{ position: branch, depth: 1 }];
-  const visited = new Set([positionKey(junction), positionKey(branch)]);
+  const visited = new Set([logicalIndex(junction, width), logicalIndex(branch, width)]);
   let nearest = Number.POSITIVE_INFINITY;
 
   for (let index = 0; index < pending.length; index += 1) {
     const current = pending[index];
     const next = openLogicalNeighbors(grid, current.position, width, height).filter(
-      (neighbor) => !visited.has(positionKey(neighbor)),
+      (neighbor) => !visited.has(logicalIndex(neighbor, width)),
     );
     if (next.length === 0) nearest = Math.min(nearest, current.depth);
     for (const neighbor of next) {
-      visited.add(positionKey(neighbor));
+      visited.add(logicalIndex(neighbor, width));
       pending.push({ position: neighbor, depth: current.depth + 1 });
     }
   }
@@ -177,16 +173,18 @@ function otherCorners(width, height, start, exit) {
 
 function candidateScore(grid, width, height, start, exit) {
   const parents = logicalTreeParents(grid, width, height, start);
-  const solution = reconstructLogicalPath(parents, exit);
+  const solution = reconstructLogicalPath(parents, exit, width);
   const decoyDepths = [];
 
   for (let index = 0; index < solution.length; index += 1) {
     const junction = solution[index];
     const routeNeighbors = new Set(
-      [solution[index - 1], solution[index + 1]].filter(Boolean).map(positionKey),
+      [solution[index - 1], solution[index + 1]]
+        .filter(Boolean)
+        .map((position) => logicalIndex(position, width)),
     );
     for (const branch of openLogicalNeighbors(grid, junction, width, height)) {
-      if (routeNeighbors.has(positionKey(branch))) continue;
+      if (routeNeighbors.has(logicalIndex(branch, width))) continue;
       decoyDepths.push(nearestLeafDepth(grid, width, height, junction, branch));
     }
   }
@@ -194,7 +192,7 @@ function candidateScore(grid, width, height, start, exit) {
   const shallowDecoys = decoyDepths.filter((depth) => depth < 3).length;
   const minimumDepth = decoyDepths.length > 0 ? Math.min(...decoyDepths) : 0;
   const cornerDepths = otherCorners(width, height, start, exit).map((corner) =>
-    cornerBranchDepth(solution, reconstructLogicalPath(parents, corner)),
+    cornerBranchDepth(solution, reconstructLogicalPath(parents, corner, width)),
   );
   const minimumCornerDepth = Math.min(...cornerDepths);
 
@@ -250,9 +248,17 @@ export function generateMaze(width, height, rng = Math.random) {
   const start = physicalCenter(endpoints.start);
   const exit = physicalCenter(endpoints.exit);
 
-  grid[start.y][start.x] = 'S';
-  grid[exit.y][exit.x] = 'E';
-  return grid.map((row) => row.join(''));
+  const rows = [];
+  for (let y = 0; y < height; y += 1) {
+    let row = '';
+    for (let x = 0; x < width; x += 1) {
+      if (y === start.y && x === start.x) row += 'S';
+      else if (y === exit.y && x === exit.x) row += 'E';
+      else row += grid[y * width + x] ? '.' : '#';
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 export function resolveDirection(pressedKeys) {
