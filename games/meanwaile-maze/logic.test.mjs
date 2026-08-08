@@ -372,6 +372,40 @@ test('generated mazes have one route and select for deep misleading branches', (
   }
 });
 
+test('the two corners that are neither start nor exit hang off deep detours from the route', () => {
+  for (let seed = 1; seed <= 20; seed += 1) {
+    const generated = generateMaze(31, 31, seededRandom(seed));
+    const map = createMapModel(generated);
+    const solution = findLogicalPath(generated, map.start, map.exit);
+    const freeCorners = [
+      { x: 0, y: 0 },
+      { x: 14, y: 0 },
+      { x: 14, y: 14 },
+      { x: 0, y: 14 },
+    ].filter(
+      (corner) => positionKey(corner) !== positionKey(map.start) && positionKey(corner) !== positionKey(map.exit),
+    );
+
+    const cornerDepths = freeCorners.map((corner) => {
+      const cornerPath = findLogicalPath(generated, map.start, corner);
+      let shared = 0;
+      while (
+        shared < solution.length &&
+        shared < cornerPath.length &&
+        positionKey(solution[shared]) === positionKey(cornerPath[shared])
+      ) {
+        shared += 1;
+      }
+      return cornerPath.length - shared;
+    });
+
+    // A depth of 0 means the corner sits directly on the real route (never misleading).
+    // Otherwise, wandering off toward it must take a real detour, not a step or two.
+    assert.ok(cornerDepths.every((depth) => depth === 0 || depth >= 3));
+    assert.ok(Math.max(...cornerDepths) >= 6);
+  }
+});
+
 test('the paper map converts physical rack tiles into logical wall lines', () => {
   const physicalMaze = [
     '#####',

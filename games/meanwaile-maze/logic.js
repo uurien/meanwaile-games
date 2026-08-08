@@ -103,13 +103,12 @@ function createDepthFirstCandidate(width, height, start, rng) {
   return grid;
 }
 
-function findLogicalSolution(grid, width, height, start, exit) {
+function logicalTreeParents(grid, width, height, start) {
   const pending = [start];
   const parents = new Map([[positionKey(start), null]]);
 
   for (let index = 0; index < pending.length; index += 1) {
     const current = pending[index];
-    if (current.x === exit.x && current.y === exit.y) break;
     for (const neighbor of openLogicalNeighbors(grid, current, width, height)) {
       const key = positionKey(neighbor);
       if (parents.has(key)) continue;
@@ -118,13 +117,30 @@ function findLogicalSolution(grid, width, height, start, exit) {
     }
   }
 
-  const solution = [];
-  let current = exit;
+  return parents;
+}
+
+function reconstructLogicalPath(parents, target) {
+  const path = [];
+  let current = target;
   while (current) {
-    solution.push(current);
+    path.push(current);
     current = parents.get(positionKey(current));
   }
-  return solution.reverse();
+  return path.reverse();
+}
+
+function cornerBranchDepth(solution, cornerPath) {
+  let shared = 0;
+  while (
+    shared < solution.length &&
+    shared < cornerPath.length &&
+    solution[shared].x === cornerPath[shared].x &&
+    solution[shared].y === cornerPath[shared].y
+  ) {
+    shared += 1;
+  }
+  return cornerPath.length - shared;
 }
 
 function nearestLeafDepth(grid, width, height, junction, branch) {
@@ -147,8 +163,21 @@ function nearestLeafDepth(grid, width, height, junction, branch) {
   return nearest;
 }
 
+function otherCorners(width, height, start, exit) {
+  const corners = [
+    { x: 0, y: 0 },
+    { x: width - 1, y: 0 },
+    { x: width - 1, y: height - 1 },
+    { x: 0, y: height - 1 },
+  ];
+  return corners.filter(
+    (corner) => positionKey(corner) !== positionKey(start) && positionKey(corner) !== positionKey(exit),
+  );
+}
+
 function candidateScore(grid, width, height, start, exit) {
-  const solution = findLogicalSolution(grid, width, height, start, exit);
+  const parents = logicalTreeParents(grid, width, height, start);
+  const solution = reconstructLogicalPath(parents, exit);
   const decoyDepths = [];
 
   for (let index = 0; index < solution.length; index += 1) {
@@ -164,9 +193,15 @@ function candidateScore(grid, width, height, start, exit) {
 
   const shallowDecoys = decoyDepths.filter((depth) => depth < 3).length;
   const minimumDepth = decoyDepths.length > 0 ? Math.min(...decoyDepths) : 0;
+  const cornerDepths = otherCorners(width, height, start, exit).map((corner) =>
+    cornerBranchDepth(solution, reconstructLogicalPath(parents, corner)),
+  );
+  const minimumCornerDepth = Math.min(...cornerDepths);
+
   return [
     -Math.max(0, TARGET_DECOYS - decoyDepths.length),
     -shallowDecoys,
+    minimumCornerDepth,
     minimumDepth,
     Math.min(decoyDepths.length, 10),
     solution.length - 1,
