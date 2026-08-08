@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meanwaile Maze</title>
+  <link rel="stylesheet" href="meanwaile-maze.css" />
+  <script src="vendor/phaser.js"></script>
+</head>
+<body>
+  <main id="game-container" aria-label="Meanwaile Maze"></main>
+  <section id="round-complete" class="overlay" hidden>
+    <div class="panel">
+      <h1>Exit found</h1>
+      <p id="final-time"></p>
+      <button id="retry-button" type="button">New maze</button>
+    </div>
+  </section>
+  <script type="module" src="meanwaile-maze.js"></script>
+</body>
+</html>
