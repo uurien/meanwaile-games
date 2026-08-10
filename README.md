@@ -87,3 +87,9 @@ Games are released one at a time, not all at once — releasing one game doesn't
 3. The workflow checks that id exists in `collection.json`, reads the version straight from that game's `game.json`, and fails immediately if a release for `<game-id>@<version>` already exists (bump the version and re-run if so). Otherwise it zips just that game's folder and publishes a GitHub Release tagged `<game-id>@<version>` with a `<game-id>-<version>.zip` asset — nothing else in the repo is touched.
 
 Meanwaile fetches `collection.json` from `main` to know which games, ids, and versions exist, then downloads the matching release asset (`https://github.com/uurien/meanwaile-games/releases/download/<game-id>@<version>/<game-id>-<version>.zip`) to install or update a game.
+
+## Game Room site
+
+[gameroom.meanwaile.com](https://gameroom.meanwaile.com) is a public gallery for playing every game in `games/` straight from `main`, no install required. Its source lives in `site/` (plain HTML/CSS/JS, no build step) and reads `collection.json` and `games/` directly. Display metadata not covered by `game.json` (genre tag, controls hint, desktop-only flag) lives in `site/meta.js` — add an entry there for new games, otherwise generic defaults are shown.
+
+`.github/workflows/deploy-gameroom.yml` deploys it to GitHub Pages on every push to `main`: it copies `site/`, `games/`, and `collection.json` into a staging folder and publishes that.
