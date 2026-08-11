@@ -10,12 +10,14 @@
 <body>
   <div class="nav-wrap">
     <nav class="nav-card">
-      <a href="index.html" class="nav-brand">
-        <span class="nav-icon">&gt;_</span>
-        <span class="nav-brand-name">meanwaile</span>
+      <div class="nav-brand">
+        <a href="https://www.meanwaile.com" target="_blank" rel="noopener">
+          <span class="nav-icon">&gt;_</span>
+          <span class="nav-brand-name">meanwaile</span>
+        </a>
         <span class="nav-brand-sep">/</span>
-        <span>Game Room</span>
-      </a>
+        <a href="index.html">Game Room</a>
+      </div>
       <div class="nav-links">
         <a class="nav-link" href="https://meanwaile.com" target="_blank" rel="noopener">About Meanwaile</a>
         <a class="nav-link" href="https://github.com/uurien/meanwaile-games" target="_blank" rel="noopener">GitHub</a>
@@ -36,7 +38,6 @@
     import { metaFor } from './meta.js';
 
     const grid = document.getElementById('games-grid');
-    const heroSub = document.getElementById('hero-sub');
 
     async function loadGame(entry) {
       const res = await fetch(`games/${entry.id}/game.json`);
@@ -64,9 +65,6 @@
         grid.innerHTML = '<div class="empty-state">No games available right now.</div>';
         return;
       }
-
-      const plural = games.length === 1 ? 'game' : 'games';
-      heroSub.textContent = `${games.length} tiny ${plural}. No sign-up, no downloads. Just play.`;
 
       for (const game of games) {
         const meta = metaFor(game.id);
