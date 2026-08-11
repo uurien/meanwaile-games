@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meanwaile Game Room</title>
+  <meta name="description" content="Small games for the time in between. No sign-up, no downloads. Just play." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="nav-wrap">
+    <nav class="nav-card">
+      <div class="nav-brand">
+        <a href="https://www.meanwaile.com" target="_blank" rel="noopener">
+          <span class="nav-icon">&gt;_</span>
+          <span class="nav-brand-name">meanwaile</span>
+        </a>
+        <span class="nav-brand-sep">/</span>
+        <a href="index.html">Game Room</a>
+      </div>
+      <div class="nav-links">
+        <a class="nav-link" href="https://meanwaile.com" target="_blank" rel="noopener">About Meanwaile</a>
+        <a class="nav-link" href="https://github.com/uurien/meanwaile-games" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="hero">
+    <h1>Small games for the time in between.</h1>
+    <p id="hero-sub">No sign-up, no downloads. Just play.</p>
+  </div>
+
+  <div id="games-grid" class="games-grid"></div>
+
+  <footer>Open source &middot; Built for the moments between prompts</footer>
+
+  <script type="module">
+    import { metaFor } from './meta.js';
+
+    const grid = document.getElementById('games-grid');
+
+    async function loadGame(entry) {
+      const res = await fetch(`games/${entry.id}/game.json`);
+      if (!res.ok) throw new Error(`Failed to load games/${entry.id}/game.json`);
+      const manifest = await res.json();
+      return { ...manifest, path: `games/${entry.id}` };
+    }
+
+    async function init() {
+      const res = await fetch('collection.json');
+      const collection = await res.json();
+
+      const games = (
+        await Promise.all(
+          collection.games.map((entry) =>
+            loadGame(entry).catch((err) => {
+              console.error(err);
+              return null;
+            })
+          )
+        )
+      ).filter(Boolean);
+
+      if (games.length === 0) {
+        grid.innerHTML = '<div class="empty-state">No games available right now.</div>';
+        return;
+      }
+
+      for (const game of games) {
+        const meta = metaFor(game.id);
+
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.innerHTML = `
+          <img class="game-card-preview" src="${game.path}/${game.preview}" alt="" loading="lazy" />
+          <div class="game-card-body">
+            <div class="game-card-title">${game.name}</div>
+            <div class="game-card-tagline">${game.tagline || ''}</div>
+            <div class="tags">
+              <span class="tag">${meta.tag}</span>
+              <span class="tag">${meta.controls}</span>
+            </div>
+            <a class="play-btn" href="play.html?id=${encodeURIComponent(game.id)}">Play</a>
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
