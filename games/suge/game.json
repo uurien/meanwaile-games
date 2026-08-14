@@ -1,0 +1,9 @@
+{
+  "id": "suge",
+  "name": "Suge",
+  "version": "0.1.0",
+  "tagline": "Hunt across the sketchbook",
+  "description": "Guide a hand-drawn snake through a paper meadow full of tiny creatures. Hunt, grow, and avoid the frame and your own tail — use arrow keys or WASD, or swipe on touch.",
+  "entry": "index.html",
+  "preview": "preview.png"
+}

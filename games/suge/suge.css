@@ -1,0 +1,152 @@
+:root {
+  color-scheme: light;
+  --ink: #49463f;
+  --muted-ink: #777064;
+  --paper: #eee7d8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(rgba(246, 241, 229, 0.08), rgba(231, 223, 208, 0.08)),
+    url('assets/paper-texture.png');
+  background-size: auto, 384px 384px;
+  color: var(--ink);
+  font-family: 'Bradley Hand', 'Noteworthy', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-weight: 600;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+body::after {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 78% 86%, rgba(117, 100, 76, 0.045), transparent 38%);
+  mix-blend-mode: multiply;
+}
+
+#hud {
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 51px;
+  padding: 12px 19px 5px;
+  font-size: clamp(15px, 4.7vw, 21px);
+  line-height: 1;
+  letter-spacing: 0.065em;
+  text-shadow: 0.45px 0.5px rgba(73, 70, 63, 0.26);
+}
+
+#score {
+  transform: rotate(-0.45deg);
+}
+
+#high {
+  transform: rotate(0.35deg);
+}
+
+#stage {
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+  padding: 4px 11px 12px;
+}
+
+#board {
+  display: block;
+  background: transparent;
+  filter: saturate(0.92) contrast(0.98);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 26px;
+  background:
+    linear-gradient(rgba(239, 232, 218, 0.91), rgba(239, 232, 218, 0.95)),
+    url('assets/paper-texture.png');
+  background-size: auto, 384px 384px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay h1 {
+  margin-bottom: 7px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transform: rotate(-0.7deg);
+}
+
+.overlay .hint {
+  margin-top: 12px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+#restart {
+  margin-top: 12px;
+  padding: 7px 20px 8px;
+  border: 1.8px solid var(--ink);
+  border-radius: 999px 47% 999px 44%;
+  background: rgba(246, 241, 230, 0.45);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transform: rotate(0.55deg);
+}
+
+#restart:focus-visible {
+  outline: 2px dashed var(--ink);
+  outline-offset: 4px;
+}
+
+@media (max-height: 380px) {
+  #hud {
+    min-height: 39px;
+    padding-top: 8px;
+  }
+
+  #stage {
+    padding-bottom: 7px;
+  }
+}
