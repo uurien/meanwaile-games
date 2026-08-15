@@ -1,0 +1,9 @@
+{
+  "id": "meanwaile-typewall",
+  "name": "Typewall",
+  "version": "1.0.0",
+  "tagline": "Type fast. Hold the line.",
+  "description": "Destroy falling terminal words before they tear through the wall. Type a match and press Enter to blast every copy at once.",
+  "entry": "index.html",
+  "preview": "preview.png"
+}
