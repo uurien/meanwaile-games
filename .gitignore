@@ -16,6 +16,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Playwright and Playwright MCP artifacts
+.playwright-mcp/
+playwright-report/
+test-results/
+blob-report/
+
 # Env
 .env
 .env.local

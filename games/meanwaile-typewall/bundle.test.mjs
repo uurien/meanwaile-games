@@ -65,6 +65,16 @@ test('the renderer preserves the fixed logical composition', async () => {
   assert.match(source, /':  destroy'/);
 });
 
+test('CHAIN segments match the solid seven-pixel CRT blocks from the reference', async () => {
+  const source = await readFile(new URL('meanwaile-typewall.js', gameRoot), 'utf8');
+
+  assert.match(source, /const CHAIN_SEGMENT_SIZE = 7/);
+  assert.match(source, /const CHAIN_SEGMENT_STEP = 10/);
+  assert.match(source, /drawChainSegment\(x, 35, index < engine\.chainProgress\)/);
+  assert.match(source, /fillRect\(x, y, CHAIN_SEGMENT_SIZE, CHAIN_SEGMENT_SIZE\)/);
+  assert.doesNotMatch(source, /fillRect\(x \+ 2, 36, 4, 4\)/);
+});
+
 test('the lower instruction uses compact pixel spacing to stay inside 440px', async () => {
   const source = await readFile(new URL('meanwaile-typewall.js', gameRoot), 'utf8');
 
@@ -76,4 +86,15 @@ test('the lower instruction uses compact pixel spacing to stay inside 440px', as
     source,
     /'to destroy all matches\.',[\s\S]*?spacing: 0/,
   );
+});
+
+test('the wall uses one exact 20px reference sprite for every block', async () => {
+  const source = await readFile(new URL('meanwaile-typewall.js', gameRoot), 'utf8');
+  const block = await readFile(new URL('assets/wall-block.png', gameRoot));
+
+  assert.equal(block.readUInt32BE(16), 20);
+  assert.equal(block.readUInt32BE(20), 20);
+  assert.match(source, /assets\/wall-block\.png/);
+  assert.match(source, /drawImage\(wallBlockImage/);
+  assert.doesNotMatch(source, /BLOCK_TOP_PATTERNS/);
 });

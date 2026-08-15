@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  DEFAULT_CONFIG,
   TypewallEngine,
   firstVisibleCharacterIndex,
   getWpm,
@@ -56,6 +57,21 @@ function collideAtWall(engine, text, column = 0) {
   // A word's y coordinate is its leading (bottom) edge. Ten milliseconds at
   // 100 px/s carries this word across the logical wall at y=100.
   addWord(engine, text, column, engine.wallY - 0.5);
+  engine.update(10);
+}
+
+function collideAtRow(engine, text, row, column = 0) {
+  addWord(
+    engine,
+    text,
+    column,
+    engine.wallY + row * engine.config.wallRowHeight - 0.5,
+  );
+  engine.update(10);
+}
+
+function collideAtGround(engine, text, column = 0) {
+  addWord(engine, text, column, engine.groundY - 0.5);
   engine.update(10);
 }
 
@@ -199,6 +215,12 @@ test('the wall always starts as exactly three complete rows of equal blocks', ()
   assert.ok(engine.blocks.every((row) => row.every((block) => block === true)));
 });
 
+test('default wall blocks have an exact one-pixel gap on both axes', () => {
+  assert.equal(DEFAULT_CONFIG.blockSize, 20);
+  assert.equal(DEFAULT_CONFIG.columnWidth - DEFAULT_CONFIG.blockSize, 1);
+  assert.equal(DEFAULT_CONFIG.wallRowHeight - DEFAULT_CONFIG.blockSize, 1);
+});
+
 test('one word impact removes exactly one block and the word from simulation', () => {
   const engine = createEngine();
 
@@ -213,7 +235,7 @@ test('successive impacts remove the first remaining block, one at a time', () =>
   const engine = createEngine();
 
   collideAtWall(engine, 'ls', 0);
-  collideAtWall(engine, 'pwd', 0);
+  collideAtRow(engine, 'pwd', 1, 0);
 
   assert.deepEqual(
     engine.blocks.map((row) => row[0]),
@@ -222,14 +244,48 @@ test('successive impacts remove the first remaining block, one at a time', () =>
   assert.equal(engine.health, 5);
 });
 
+test('a word crosses a missing top row and collides only at the next block', () => {
+  const engine = createEngine();
+  engine.blocks[0][0] = false;
+  const word = addWord(engine, 'docker', 0, engine.wallY - 0.5);
+
+  engine.update(10);
+
+  assert.equal(engine.activeWords.length, 1);
+  assert.equal(engine.activeWords[0], word);
+  assert.equal(engine.blocks[1][0], true);
+
+  word.y = engine.wallY + engine.config.wallRowHeight - 0.5;
+  engine.update(10);
+
+  assert.equal(engine.activeWords.length, 0);
+  assert.equal(engine.blocks[1][0], false);
+  assert.ok(
+    engine.particles
+      .filter((particle) => particle.kind === 'block')
+      .every((particle) => particle.y === engine.wallY + engine.config.wallRowHeight + 5),
+  );
+});
+
 test('a word crossing a full hole costs exactly one health regardless of length', () => {
   const engine = createEngine();
   removeColumn(engine, 0);
 
-  collideAtWall(engine, 'kubernetes', 0);
+  const word = addWord(engine, 'kubernetes', 0, engine.wallY - 0.5);
+  engine.update(10);
+  assert.equal(engine.health, 5);
+  assert.equal(engine.activeWords.length, 1);
+
+  word.y = engine.groundY - 0.5;
+  engine.update(10);
 
   assert.equal(engine.health, 4);
   assert.equal(engine.activeWords.length, 0);
+  assert.ok(
+    engine.particles
+      .filter((particle) => particle.kind === 'breach')
+      .every((particle) => particle.y === engine.groundY),
+  );
 });
 
 test('health reaching zero produces game over', () => {
@@ -237,10 +293,24 @@ test('health reaching zero produces game over', () => {
   removeColumn(engine, 0);
   engine.health = 1;
 
-  collideAtWall(engine, 'ls', 0);
+  collideAtGround(engine, 'ls', 0);
 
   assert.equal(engine.health, 0);
   assert.equal(engine.gameOver, true);
+});
+
+test('WPM freezes at the instant of game over', () => {
+  const engine = createEngine();
+  removeColumn(engine, 0);
+  engine.health = 1;
+  engine.destroyedWordTimes = [0];
+  addWord(engine, 'ls', 0, engine.groundY - 0.5);
+
+  engine.update(10, 30_000);
+
+  assert.equal(engine.gameOver, true);
+  assert.equal(engine.getWpm(30_000), 1);
+  assert.equal(engine.getWpm(120_000), 1);
 });
 
 test('Enter restarts a game over with fresh health, wall, score, and CHAIN', () => {
@@ -250,7 +320,7 @@ test('Enter restarts a game over with fresh health, wall, score, and CHAIN', () 
   engine.score = 123;
   engine.chainMultiplier = 8;
   engine.chainProgress = 4;
-  collideAtWall(engine, 'ls', 0);
+  collideAtGround(engine, 'ls', 0);
   assert.equal(engine.gameOver, true);
 
   engine.handleKey('Enter', 500);

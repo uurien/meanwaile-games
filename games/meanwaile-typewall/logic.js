@@ -7,10 +7,11 @@ export const WPM_WINDOW_MS = 60_000;
 
 export const DEFAULT_CONFIG = Object.freeze({
   columns: 20,
-  wallY: 290,
+  wallY: 289,
   wallRowHeight: 21,
-  boardLeft: 12,
-  columnWidth: 20.8,
+  blockSize: 20,
+  boardLeft: 10,
+  columnWidth: 21,
   spawnTopY: 61,
   characterStep: 14,
   initialFallSpeed: 14,
@@ -81,6 +82,10 @@ export class TypewallEngine {
     return this.config.wallY;
   }
 
+  get groundY() {
+    return this.wallY + WALL_ROWS * this.config.wallRowHeight;
+  }
+
   reset() {
     this.activeWords = [];
     this.destroyingWords = [];
@@ -92,6 +97,7 @@ export class TypewallEngine {
     this.chainProgress = 0;
     this.health = MAX_HEALTH;
     this.gameOver = false;
+    this.gameOverAtMs = null;
     this.elapsedMs = 0;
     this.timeSinceSpawnMs = 0;
     this.destroyedWordTimes = [];
@@ -110,7 +116,7 @@ export class TypewallEngine {
   }
 
   getWpm(nowMs = this.elapsedMs) {
-    return getWpm(this.destroyedWordTimes, nowMs);
+    return getWpm(this.destroyedWordTimes, this.gameOverAtMs ?? nowMs);
   }
 
   handleKey(key, nowMs = this.elapsedMs) {
@@ -165,7 +171,10 @@ export class TypewallEngine {
     this.input = '';
   }
 
-  update(dtMs) {
+  update(
+    dtMs,
+    nowMs = this.elapsedMs + Math.max(0, Math.min(dtMs, this.config.maxDeltaMs)),
+  ) {
     const dt = Math.max(0, Math.min(dtMs, this.config.maxDeltaMs));
     if (dt === 0) return;
 
@@ -182,11 +191,9 @@ export class TypewallEngine {
     const survivors = [];
     for (const word of this.activeWords) {
       word.y += distance;
-      if (word.y >= this.wallY) {
-        this.resolveWallCollision(word);
+      if (this.resolveWallCollision(word, nowMs)) {
         if (this.gameOver) break;
-      }
-      else survivors.push(word);
+      } else survivors.push(word);
     }
     this.activeWords = survivors;
 
@@ -199,16 +206,25 @@ export class TypewallEngine {
     }
   }
 
-  resolveWallCollision(word) {
+  resolveWallCollision(word, nowMs = this.elapsedMs) {
     const rowIndex = this.blocks.findIndex((row) => row[word.column]);
+    const collisionY = rowIndex >= 0
+      ? this.wallY + rowIndex * this.config.wallRowHeight
+      : this.groundY;
+    if (word.y < collisionY) return false;
+
     if (rowIndex >= 0) {
       this.blocks[rowIndex][word.column] = false;
       this.createBlockParticles(word.column, rowIndex);
-      return;
+      return true;
     }
     this.health = Math.max(0, this.health - 1);
     this.createBreachParticles(word.column);
-    if (this.health === 0) this.gameOver = true;
+    if (this.health === 0) {
+      this.gameOver = true;
+      this.gameOverAtMs = nowMs;
+    }
+    return true;
   }
 
   spawnWord() {
@@ -281,7 +297,7 @@ export class TypewallEngine {
   createBreachParticles(column) {
     const x = this.config.boardLeft + column * this.config.columnWidth + this.config.columnWidth / 2;
     for (let index = 0; index < 9; index += 1) {
-      this.particle('breach', x, this.wallY + 35, (this.rng() - 0.5) * 18, -12 - this.rng() * 18, 500, 2);
+      this.particle('breach', x, this.groundY, (this.rng() - 0.5) * 18, -12 - this.rng() * 18, 500, 2);
     }
   }
 

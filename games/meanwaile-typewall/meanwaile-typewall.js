@@ -10,22 +10,23 @@ import {
 const LOGICAL_WIDTH = 440;
 const LOGICAL_HEIGHT = 470;
 const HEART_COUNT = 5;
+const CHAIN_SEGMENT_SIZE = 7;
+const CHAIN_SEGMENT_STEP = 10;
 const GREEN = '#8dce47';
 const GREEN_BRIGHT = '#a7e858';
 const GREEN_DIM = '#345f20';
 const BACKGROUND = '#030806';
 
-const BLOCK_TOP_PATTERNS = [
-  ['1111111011111101111', '1101111110111111111', '1111001111111011110', '0010000110010001000'],
-  ['1110111111101111111', '1111110111111101111', '1011111110011111101', '0001100001000100100'],
-  ['1111101111111110111', '1110111111011111111', '1111110011111100111', '0100010000110001000'],
-  ['1111111110111111101', '1101111111110111111', '1110011111111001110', '0011000100001100010'],
-  ['1111011111110111111', '1111111101111111011', '1001111111100111111', '0100001010000011000'],
-];
-
 const canvas = document.getElementById('game');
 const context = canvas.getContext('2d', { alpha: false });
 context.imageSmoothingEnabled = false;
+const wallBlockImage = new Image();
+let wallBlockReady = false;
+wallBlockImage.addEventListener('load', () => {
+  wallBlockReady = true;
+  render();
+});
+wallBlockImage.src = 'assets/wall-block.png';
 
 const GLYPHS = {
   A: ['01110','10001','10001','11111','10001','10001','10001'],
@@ -187,22 +188,43 @@ function drawHud() {
   drawPixelText(`CHAIN  x${engine.chainMultiplier}`, 148, 19, { color: GREEN });
   const segmentX = 148;
   for (let index = 0; index < CHAIN_SEGMENTS; index += 1) {
-    const x = segmentX + index * 10;
-    context.strokeStyle = index < engine.chainProgress ? GREEN_BRIGHT : GREEN_DIM;
-    context.strokeRect(x + 0.5, 34.5, 7, 7);
-    if (index < engine.chainProgress) {
-      context.fillStyle = GREEN;
-      context.shadowColor = GREEN;
-      context.shadowBlur = 4;
-      context.fillRect(x + 2, 36, 4, 4);
-      context.shadowBlur = 0;
-    }
+    const x = segmentX + index * CHAIN_SEGMENT_STEP;
+    drawChainSegment(x, 35, index < engine.chainProgress);
   }
 
   drawPixelText('HEALTH', 331, 19, { color: GREEN });
   for (let index = 0; index < HEART_COUNT; index += 1) {
     drawHeart(331 + index * 18, 33, index < engine.health);
   }
+}
+
+function drawChainSegment(x, y, filled) {
+  context.save();
+  if (filled) {
+    context.shadowColor = GREEN;
+    context.shadowBlur = 3;
+    context.fillStyle = '#659b34';
+    context.fillRect(x, y, CHAIN_SEGMENT_SIZE, CHAIN_SEGMENT_SIZE);
+
+    // The reference blocks have a bright CRT-facing edge and a darker lower
+    // edge instead of a hollow centre.
+    context.shadowBlur = 0;
+    context.fillStyle = GREEN_BRIGHT;
+    context.fillRect(x, y, CHAIN_SEGMENT_SIZE, 1);
+    context.fillRect(x, y + 1, 1, CHAIN_SEGMENT_SIZE - 1);
+    context.fillStyle = '#426c25';
+    context.fillRect(x + 1, y + CHAIN_SEGMENT_SIZE - 1, CHAIN_SEGMENT_SIZE - 1, 1);
+    context.fillRect(x + CHAIN_SEGMENT_SIZE - 1, y + 1, 1, CHAIN_SEGMENT_SIZE - 1);
+  } else {
+    context.strokeStyle = 'rgba(77, 120, 39, 0.65)';
+    context.strokeRect(
+      x + 0.5,
+      y + 0.5,
+      CHAIN_SEGMENT_SIZE - 1,
+      CHAIN_SEGMENT_SIZE - 1,
+    );
+  }
+  context.restore();
 }
 
 function formatScore(score) {
@@ -263,74 +285,21 @@ function drawWords() {
 }
 
 function drawWall() {
-  const { boardLeft, columnWidth, wallY, wallRowHeight } = DEFAULT_CONFIG;
+  const { blockSize, boardLeft, columnWidth, wallY, wallRowHeight } = DEFAULT_CONFIG;
   for (let row = 0; row < WALL_ROWS; row += 1) {
     for (let column = 0; column < DEFAULT_CONFIG.columns; column += 1) {
       if (!engine.blocks[row][column]) continue;
-      drawWallBlock(
-        Math.round(boardLeft + column * columnWidth),
-        wallY + row * wallRowHeight,
-        Math.floor(columnWidth) - 1,
-        wallRowHeight - 2,
-        column,
-        row,
-      );
-    }
-  }
-}
-
-function drawWallBlock(x, y, width, height, column, row) {
-  const seed = column * 17 + row * 31;
-
-  context.fillStyle = '#33561f';
-  context.fillRect(x, y + 2, width, height - 2);
-  context.strokeStyle = '#649b35';
-  context.strokeRect(x + 0.5, y + 2.5, width - 1, height - 3);
-
-  context.fillStyle = '#27471b';
-  for (let stain = 0; stain < 4; stain += 1) {
-    const stainX = x + 2 + ((seed + stain * 5) % (width - 4));
-    const stainY = y + 5 + ((seed + stain * 7) % 5);
-    context.fillRect(stainX, stainY, 2, Math.min(height - (stainY - y) - 1, 4 + (stain % 3)));
-  }
-
-  const topPattern = BLOCK_TOP_PATTERNS[seed % BLOCK_TOP_PATTERNS.length];
-  context.save();
-  context.shadowColor = GREEN_BRIGHT;
-  context.shadowBlur = 2;
-  for (let patternY = 0; patternY < topPattern.length; patternY += 1) {
-    context.fillStyle = patternY < 2 ? GREEN_BRIGHT : '#78b73d';
-    for (let patternX = 0; patternX < width; patternX += 1) {
-      if (topPattern[patternY][patternX] === '1') {
-        context.fillRect(x + patternX, y + patternY, 1, 1);
+      const x = Math.round(boardLeft + column * columnWidth);
+      const y = wallY + row * wallRowHeight;
+      if (wallBlockReady) {
+        context.drawImage(wallBlockImage, x, y, blockSize, blockSize);
+      }
+      else {
+        context.fillStyle = '#31531e';
+        context.fillRect(x, y, blockSize, blockSize);
       }
     }
   }
-  context.restore();
-
-  context.fillStyle = '#091108';
-  for (let holeRow = 0; holeRow < 4; holeRow += 1) {
-    for (let holeColumn = 0; holeColumn < 6; holeColumn += 1) {
-      const holeX = x + 2 + holeColumn * 3;
-      const holeY = y + 6 + holeRow * 3;
-      if (holeX < x + width - 1 && holeY < y + height - 1) {
-        context.fillRect(holeX, holeY, 1, 1);
-      }
-    }
-  }
-
-  context.fillStyle = '#29491b';
-  for (let patch = 0; patch < 3; patch += 1) {
-    const patchX = x + 2 + ((seed * 2 + patch * 7) % (width - 5));
-    const patchY = y + 7 + ((seed + patch * 5) % Math.max(1, height - 10));
-    context.fillRect(patchX, patchY, 2 + (patch % 2), 2);
-  }
-  context.fillStyle = '#73aa3b';
-  context.fillRect(x + 3 + (seed % Math.max(1, width - 7)), y + 5, 1, 2);
-
-  context.fillStyle = 'rgba(157, 218, 83, 0.24)';
-  context.fillRect(x + 1, y + 4, 1, height - 5);
-  context.fillRect(x + width - 2, y + 5, 1, height - 7);
 }
 
 function drawParticles() {
@@ -439,11 +408,13 @@ function render(now = displayNow) {
   drawFrame();
   drawHud();
   drawWords();
+  drawInputAndControls();
+  drawCrtTexture();
+  // The block sprite is sampled from the CRT reference itself, so it must be
+  // copied after the synthetic texture to preserve its pixels exactly.
   drawWall();
   drawParticles();
-  drawInputAndControls();
   if (engine.gameOver) drawGameOver();
-  drawCrtTexture();
 }
 
 function setUpPreviewScene() {
@@ -487,7 +458,7 @@ function setUpPreviewScene() {
 function loop(now) {
   if (!hostActive) return;
   if (lastFrameAt === null) lastFrameAt = now;
-  engine.update(now - lastFrameAt);
+  engine.update(now - lastFrameAt, now);
   lastFrameAt = now;
   render(now);
   frameId = requestAnimationFrame(loop);
