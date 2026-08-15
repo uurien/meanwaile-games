@@ -60,9 +60,29 @@ test('the renderer preserves the fixed logical composition', async () => {
   assert.match(logic, /CHAIN_SEGMENTS = 5/);
   assert.match(source, /HEART_COUNT = 5/);
   assert.match(source, /drawKey\('ESC'/);
-  assert.match(source, /':  clear'/);
+  assert.match(source, /': clear'/);
   assert.match(source, /drawKey\('ENTER'/);
-  assert.match(source, /':  destroy'/);
+  assert.match(source, /': destroy'/);
+  assert.doesNotMatch(source, /':  (?:clear|destroy)'/);
+});
+
+test('the HUD shows a persistent high score at the far right and moves health beside CHAIN', async () => {
+  const source = await readFile(new URL('meanwaile-typewall.js', gameRoot), 'utf8');
+
+  assert.match(source, /HIGH_SCORE_STORAGE_KEY/);
+  assert.match(source, /localStorage\.getItem\(HIGH_SCORE_STORAGE_KEY\)/);
+  assert.match(source, /localStorage\.setItem\(HIGH_SCORE_STORAGE_KEY/);
+  assert.match(source, /drawPixelText\('HEALTH', 220, 19/);
+  assert.match(source, /drawPixelText\('HIGH SCORE', 421, 19,[\s\S]*?align: 'right'/);
+  assert.match(source, /formatScore\(engine\.highScore\), 421, 33,[\s\S]*?align: 'right'/);
+});
+
+test('game over shows the high score and announces a new record conditionally', async () => {
+  const source = await readFile(new URL('meanwaile-typewall.js', gameRoot), 'utf8');
+
+  assert.match(source, /if \(engine\.newRecord\)[\s\S]*?'NEW RECORD'/);
+  assert.match(source, /`HIGH SCORE \$\{formatScore\(engine\.highScore\)\}`/);
+  assert.match(source, /`SCORE \$\{formatScore\(engine\.score\)\}`/);
 });
 
 test('CHAIN segments match the solid seven-pixel CRT blocks from the reference', async () => {

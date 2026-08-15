@@ -3,7 +3,6 @@ import { WORDS } from './words.js';
 export const WALL_ROWS = 3;
 export const CHAIN_SEGMENTS = 5;
 export const MAX_HEALTH = 5;
-export const WPM_WINDOW_MS = 60_000;
 
 export const DEFAULT_CONFIG = Object.freeze({
   columns: 20,
@@ -46,9 +45,9 @@ export function validateWords(words) {
 
 validateWords(WORDS);
 
-export function getWpm(destructionTimes, nowMs) {
-  const windowStart = nowMs - WPM_WINDOW_MS;
-  return destructionTimes.filter((time) => time >= windowStart && time <= nowMs).length;
+export function getWpm(destroyedWordCount, elapsedMs) {
+  if (destroyedWordCount <= 0 || elapsedMs <= 0) return 0;
+  return Math.round((destroyedWordCount * 60_000) / elapsedMs);
 }
 
 export function firstVisibleCharacterIndex(word, config = DEFAULT_CONFIG) {
@@ -68,11 +67,19 @@ function makeBlocks(columns) {
 
 export class TypewallEngine {
   constructor(options = {}) {
-    const { rng = Math.random, words = WORDS, ...overrides } = options;
+    const {
+      rng = Math.random,
+      words = WORDS,
+      highScore = 0,
+      ...overrides
+    } = options;
     validateWords(words);
     this.config = Object.freeze({ ...DEFAULT_CONFIG, ...overrides });
     this.rng = rng;
     this.words = words;
+    this.highScore = Number.isFinite(highScore)
+      ? Math.max(0, Math.floor(highScore))
+      : 0;
     this.nextWordId = 1;
     this.nextParticleId = 1;
     this.reset();
@@ -97,10 +104,10 @@ export class TypewallEngine {
     this.chainProgress = 0;
     this.health = MAX_HEALTH;
     this.gameOver = false;
-    this.gameOverAtMs = null;
+    this.newRecord = false;
     this.elapsedMs = 0;
     this.timeSinceSpawnMs = 0;
-    this.destroyedWordTimes = [];
+    this.destroyedWordCount = 0;
   }
 
   addWord(text, { column = 0, y } = {}) {
@@ -115,8 +122,8 @@ export class TypewallEngine {
     return word;
   }
 
-  getWpm(nowMs = this.elapsedMs) {
-    return getWpm(this.destroyedWordTimes, this.gameOverAtMs ?? nowMs);
+  getWpm() {
+    return getWpm(this.destroyedWordCount, this.elapsedMs);
   }
 
   handleKey(key, nowMs = this.elapsedMs) {
@@ -149,8 +156,12 @@ export class TypewallEngine {
       const matchIds = new Set(matches.map((word) => word.id));
       this.activeWords = this.activeWords.filter((word) => !matchIds.has(word.id));
       this.score += submitted.length * matches.length * multiplier;
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+        this.newRecord = true;
+      }
+      this.destroyedWordCount += matches.length;
       for (const word of matches) {
-        this.destroyedWordTimes.push(nowMs);
         this.destroyingWords.push({
           ...word,
           startedAtMs: nowMs,
@@ -171,10 +182,7 @@ export class TypewallEngine {
     this.input = '';
   }
 
-  update(
-    dtMs,
-    nowMs = this.elapsedMs + Math.max(0, Math.min(dtMs, this.config.maxDeltaMs)),
-  ) {
+  update(dtMs) {
     const dt = Math.max(0, Math.min(dtMs, this.config.maxDeltaMs));
     if (dt === 0) return;
 
@@ -191,7 +199,7 @@ export class TypewallEngine {
     const survivors = [];
     for (const word of this.activeWords) {
       word.y += distance;
-      if (this.resolveWallCollision(word, nowMs)) {
+      if (this.resolveWallCollision(word)) {
         if (this.gameOver) break;
       } else survivors.push(word);
     }
@@ -206,7 +214,7 @@ export class TypewallEngine {
     }
   }
 
-  resolveWallCollision(word, nowMs = this.elapsedMs) {
+  resolveWallCollision(word) {
     const rowIndex = this.blocks.findIndex((row) => row[word.column]);
     const collisionY = rowIndex >= 0
       ? this.wallY + rowIndex * this.config.wallRowHeight
@@ -222,7 +230,6 @@ export class TypewallEngine {
     this.createBreachParticles(word.column);
     if (this.health === 0) {
       this.gameOver = true;
-      this.gameOverAtMs = nowMs;
     }
     return true;
   }

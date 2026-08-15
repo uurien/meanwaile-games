@@ -106,6 +106,37 @@ test('dockerr at CHAIN x14 subtracts 98, clears input, and resets CHAIN', () => 
   assert.equal(engine.input, '');
 });
 
+test('high score increases with score, never decreases, and survives a restart', () => {
+  const engine = createEngine({ highScore: 40 });
+  engine.chainMultiplier = 10;
+  addWord(engine, 'docker', 0, 20);
+
+  submit(engine, 'docker');
+  assert.equal(engine.score, 60);
+  assert.equal(engine.highScore, 60);
+  assert.equal(engine.newRecord, true);
+
+  submit(engine, 'dockerr');
+  assert.equal(engine.score, -10);
+  assert.equal(engine.highScore, 60);
+
+  engine.reset();
+  assert.equal(engine.score, 0);
+  assert.equal(engine.highScore, 60);
+  assert.equal(engine.newRecord, false);
+});
+
+test('a run that does not exceed the existing high score is not a new record', () => {
+  const engine = createEngine({ highScore: 100 });
+  addWord(engine, 'docker', 0, 20);
+
+  submit(engine, 'docker');
+
+  assert.equal(engine.score, 6);
+  assert.equal(engine.highScore, 100);
+  assert.equal(engine.newRecord, false);
+});
+
 test('a dictionary word that has no active instance is still a miss', () => {
   const engine = createEngine();
   assert.ok(WORDS.includes('docker'));
@@ -169,7 +200,7 @@ test('an empty Enter is a no-op and does not reset an existing CHAIN', () => {
   assert.equal(engine.score, 37);
   assert.equal(engine.chainMultiplier, 4);
   assert.equal(engine.chainProgress, 3);
-  assert.equal(engine.destroyedWordTimes.length, 0);
+  assert.equal(engine.destroyedWordCount, 0);
 });
 
 test('five correct Enters advance CHAIN from x1 to x2 and empty its five segments', () => {
@@ -299,18 +330,20 @@ test('health reaching zero produces game over', () => {
   assert.equal(engine.gameOver, true);
 });
 
-test('WPM freezes at the instant of game over', () => {
+test('average WPM freezes at the instant of game over', () => {
   const engine = createEngine();
   removeColumn(engine, 0);
   engine.health = 1;
-  engine.destroyedWordTimes = [0];
+  engine.destroyedWordCount = 1;
+  engine.elapsedMs = 29_990;
   addWord(engine, 'ls', 0, engine.groundY - 0.5);
 
-  engine.update(10, 30_000);
+  engine.update(10);
 
   assert.equal(engine.gameOver, true);
-  assert.equal(engine.getWpm(30_000), 1);
-  assert.equal(engine.getWpm(120_000), 1);
+  assert.equal(engine.getWpm(), 2);
+  engine.update(90_000);
+  assert.equal(engine.getWpm(), 2);
 });
 
 test('Enter restarts a game over with fresh health, wall, score, and CHAIN', () => {
@@ -378,23 +411,33 @@ test('a broken block creates purely visual fragments that rise and fade', () => 
 
 test('duplicate instances count individually as destroyed words per minute', () => {
   const engine = createEngine();
+  engine.elapsedMs = 30_000;
   addWord(engine, 'docker', 0, 20);
   addWord(engine, 'docker', 1, 30);
   addWord(engine, 'docker', 2, 40);
 
   submit(engine, 'docker', 1_000);
 
-  assert.equal(engine.getWpm(1_000), 3);
-  assert.equal(getWpm(engine.destroyedWordTimes, 1_000), 3);
-  assert.equal(engine.getWpm(61_001), 0);
+  assert.equal(engine.destroyedWordCount, 3);
+  assert.equal(engine.getWpm(), 6);
+  assert.equal(getWpm(3, 30_000), 6);
 });
 
-test('WPM uses a rolling 60-second instance window, not character count', () => {
-  const destructionTimes = [1_000, 10_000, 60_000, 60_001];
+test('WPM is the rounded whole-game average, not a rolling window', () => {
+  assert.equal(getWpm(4, 60_000), 4);
+  assert.equal(getWpm(4, 120_000), 2);
+  assert.equal(getWpm(4, 180_000), 1);
+  assert.equal(getWpm(0, 0), 0);
+});
 
-  assert.equal(getWpm(destructionTimes, 60_001), 4);
-  assert.equal(getWpm(destructionTimes, 61_001), 3);
-  assert.equal(getWpm(destructionTimes, 120_002), 0);
+test('misses do not change the destroyed-word count used by average WPM', () => {
+  const engine = createEngine();
+  engine.elapsedMs = 60_000;
+
+  submit(engine, 'dockerr');
+
+  assert.equal(engine.destroyedWordCount, 0);
+  assert.equal(engine.getWpm(), 0);
 });
 
 test('the word database contains the 180 valid, lowercase, unique terms', () => {

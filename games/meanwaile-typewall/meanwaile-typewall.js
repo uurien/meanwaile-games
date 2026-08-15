@@ -16,6 +16,7 @@ const GREEN = '#8dce47';
 const GREEN_BRIGHT = '#a7e858';
 const GREEN_DIM = '#345f20';
 const BACKGROUND = '#030806';
+const HIGH_SCORE_STORAGE_KEY = 'meanwaile-typewall-high-score';
 
 const canvas = document.getElementById('game');
 const context = canvas.getContext('2d', { alpha: false });
@@ -100,11 +101,28 @@ const GLYPHS = {
   ' ': ['00000','00000','00000','00000','00000','00000','00000'],
 };
 
-const engine = new TypewallEngine();
+const engine = new TypewallEngine({ highScore: readHighScore() });
 let frameId = null;
 let lastFrameAt = null;
 let hostActive = false;
 let displayNow = 0;
+
+function readHighScore() {
+  try {
+    const stored = Number.parseInt(localStorage.getItem(HIGH_SCORE_STORAGE_KEY) ?? '0', 10);
+    return Number.isFinite(stored) ? Math.max(0, stored) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persistHighScore() {
+  try {
+    localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(engine.highScore));
+  } catch {
+    // Storage can be unavailable in a sandbox; the in-memory record still works.
+  }
+}
 
 function pixelTextWidth(text, scale = 1, spacing = 1) {
   if (text.length === 0) return 0;
@@ -183,7 +201,7 @@ function drawHud() {
   drawPixelText(formatScore(engine.score), 17, 33, { color: GREEN_BRIGHT, glow: 4 });
 
   drawPixelText('WPM', 98, 19, { color: GREEN });
-  drawPixelText(String(engine.getWpm(displayNow)), 100, 33, { color: GREEN_BRIGHT, glow: 4 });
+  drawPixelText(String(engine.getWpm()), 100, 33, { color: GREEN_BRIGHT, glow: 4 });
 
   drawPixelText(`CHAIN  x${engine.chainMultiplier}`, 148, 19, { color: GREEN });
   const segmentX = 148;
@@ -192,10 +210,17 @@ function drawHud() {
     drawChainSegment(x, 35, index < engine.chainProgress);
   }
 
-  drawPixelText('HEALTH', 331, 19, { color: GREEN });
+  drawPixelText('HEALTH', 220, 19, { color: GREEN });
   for (let index = 0; index < HEART_COUNT; index += 1) {
-    drawHeart(331 + index * 18, 33, index < engine.health);
+    drawHeart(220 + index * 18, 33, index < engine.health);
   }
+
+  drawPixelText('HIGH SCORE', 421, 19, {
+    color: GREEN, align: 'right',
+  });
+  drawPixelText(formatScore(engine.highScore), 421, 33, {
+    color: GREEN_BRIGHT, align: 'right', glow: 4,
+  });
 }
 
 function drawChainSegment(x, y, filled) {
@@ -335,11 +360,11 @@ function drawInputAndControls() {
   context.strokeRect(cursorX + 0.5, 380.5, 6, 13);
 
   drawKey('ESC', 17, 423, 31);
-  drawPixelText(':  clear', 52, 432, { color: GREEN });
+  drawPixelText(': clear', 52, 432, { color: GREEN });
   context.fillStyle = GREEN_DIM;
   context.fillRect(104, 422, 1, 27);
   drawKey('ENTER', 120, 423, 40);
-  drawPixelText(':  destroy', 164, 432, { color: GREEN });
+  drawPixelText(': destroy', 164, 432, { color: GREEN });
   context.fillRect(223, 422, 1, 27);
   drawDocumentIcon(242, 423);
   drawPixelText('Type the words and press ENTER', 260, 426, {
@@ -373,19 +398,27 @@ function drawDocumentIcon(x, y) {
 
 function drawGameOver() {
   context.fillStyle = 'rgba(2, 8, 5, 0.91)';
-  context.fillRect(46, 111, 348, 170);
+  context.fillRect(46, 102, 348, 188);
   context.strokeStyle = GREEN;
-  context.strokeRect(46.5, 111.5, 347, 169);
-  drawPixelText('GAME OVER', 220, 134, {
+  context.strokeRect(46.5, 102.5, 347, 187);
+  drawPixelText('GAME OVER', 220, 124, {
     scale: 3, align: 'center', color: GREEN_BRIGHT, glow: 8,
   });
-  drawPixelText(`SCORE ${engine.score}`, 220, 186, {
+  if (engine.newRecord) {
+    drawPixelText('NEW RECORD', 220, 163, {
+      scale: 2, align: 'center', color: GREEN_BRIGHT, glow: 6,
+    });
+  }
+  drawPixelText(`SCORE ${formatScore(engine.score)}`, 220, 190, {
     scale: 2, align: 'center', color: GREEN,
   });
-  drawPixelText(`WPM ${engine.getWpm(displayNow)}`, 220, 212, {
+  drawPixelText(`HIGH SCORE ${formatScore(engine.highScore)}`, 220, 216, {
     scale: 2, align: 'center', color: GREEN,
   });
-  drawPixelText('PRESS ENTER TO RESTART', 220, 253, {
+  drawPixelText(`WPM ${engine.getWpm()}`, 220, 242, {
+    scale: 2, align: 'center', color: GREEN,
+  });
+  drawPixelText('PRESS ENTER TO RESTART', 220, 271, {
     align: 'center', color: GREEN_DIM,
   });
 }
@@ -419,11 +452,13 @@ function render(now = displayNow) {
 
 function setUpPreviewScene() {
   engine.score = 1_240;
+  engine.highScore = Math.max(engine.highScore, 9_840);
   engine.chainMultiplier = 14;
   engine.chainProgress = 3;
   engine.health = 4;
   engine.input = 'docker';
-  engine.destroyedWordTimes = Array.from({ length: 92 }, (_, index) => -index * 500);
+  engine.destroyedWordCount = 92;
+  engine.elapsedMs = 60_000;
   const words = [
     ['docker', 2, 180],
     ['ls', 5, 232],
@@ -458,7 +493,7 @@ function setUpPreviewScene() {
 function loop(now) {
   if (!hostActive) return;
   if (lastFrameAt === null) lastFrameAt = now;
-  engine.update(now - lastFrameAt, now);
+  engine.update(now - lastFrameAt);
   lastFrameAt = now;
   render(now);
   frameId = requestAnimationFrame(loop);
@@ -481,7 +516,9 @@ window.addEventListener('keydown', (event) => {
   if (controlled) event.preventDefault();
   if (!hostActive) return;
   const wasGameOver = engine.gameOver;
+  const previousHighScore = engine.highScore;
   if (engine.handleKey(event.key, performance.now())) {
+    if (engine.highScore !== previousHighScore) persistHighScore();
     if (/^[a-z0-9]$/iu.test(event.key)) event.preventDefault();
     render(performance.now());
     if (wasGameOver && !engine.gameOver) startLoop();
