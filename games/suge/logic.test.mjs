@@ -13,6 +13,7 @@ import {
   START_TICK_MS,
   SnakeEngine,
   TICK_RAMP_SCORE,
+  eventToDirection,
   keyToDirection,
   tickIntervalForScore,
 } from './logic.js';
@@ -37,6 +38,22 @@ test('keyToDirection returns null for unrelated keys', () => {
   assert.equal(keyToDirection(' '), null);
   assert.equal(keyToDirection('Enter'), null);
   assert.equal(keyToDirection(undefined), null);
+});
+
+test('eventToDirection leaves host shortcuts to the browser', () => {
+  assert.equal(eventToDirection({ key: 'a' }), 'left');
+  assert.equal(eventToDirection({ key: 'ArrowUp' }), 'up');
+
+  for (const modifier of ['metaKey', 'ctrlKey', 'altKey']) {
+    assert.equal(eventToDirection({ key: 'a', [modifier]: true }), null);
+    assert.equal(eventToDirection({ key: 's', [modifier]: true }), null);
+    assert.equal(eventToDirection({ key: 'd', [modifier]: true }), null);
+    assert.equal(eventToDirection({ key: 'ArrowLeft', [modifier]: true }), null);
+  }
+
+  // Shift alone does not carry a conflicting shortcut, so it still steers.
+  assert.equal(eventToDirection({ key: 'W', shiftKey: true }), 'up');
+  assert.equal(eventToDirection(null), null);
 });
 
 test('tickIntervalForScore ramps from START_TICK_MS down to MIN_TICK_MS and clamps', () => {

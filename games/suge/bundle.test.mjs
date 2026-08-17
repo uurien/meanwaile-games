@@ -9,6 +9,7 @@ test('the manifest and collection entry describe the same offline game', async (
   const collection = JSON.parse(await readFile(new URL('../../collection.json', gameRoot), 'utf8'));
 
   assert.equal(manifest.id, 'suge');
+  assert.equal(manifest.tagline, 'Eat, grow, and mind your tail');
   assert.equal(manifest.entry, 'index.html');
   assert.equal(manifest.preview, 'preview.png');
   assert.ok(collection.games.some((game) => (

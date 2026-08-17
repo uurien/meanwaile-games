@@ -52,6 +52,14 @@ export function keyToDirection(key) {
   return KEY_DIRECTIONS[key.toLowerCase()] ?? null;
 }
 
+// Modified combinations belong to the host, not the game: w/a/s/d overlap with
+// Cmd+A, Cmd+S and Cmd+D, so claiming them would swallow those shortcuts
+// whenever the game iframe holds focus.
+export function eventToDirection(event) {
+  if (!event || event.ctrlKey || event.metaKey || event.altKey) return null;
+  return keyToDirection(event.key);
+}
+
 export function tickIntervalForScore(score) {
   const progress = Math.min(1, Math.max(0, score) / TICK_RAMP_SCORE);
   return START_TICK_MS - progress * (START_TICK_MS - MIN_TICK_MS);
@@ -95,9 +103,9 @@ export class SnakeEngine {
     const subjects = [...this.snake, ...this.prey];
 
     const result = [];
-    // Keep collectibles away from the wall so their artwork remains fully
-    // inside the hand-drawn frame and every spawn is reachable without an
-    // immediately fatal move.
+    // Keep collectibles off the wall ring so every spawn is reachable without
+    // an immediately fatal move. Prey artwork is deliberately larger than one
+    // cell, so edge spawns still overlap the frame a little.
     for (let y = 1; y < ROWS - 1; y += 1) {
       for (let x = 1; x < COLS - 1; x += 1) {
         const tooClose = subjects.some((subject) => (

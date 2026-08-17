@@ -39,8 +39,11 @@ writes the 1024×512 RGBA runtime atlas.
 
 `build-assets.py` downsamples the master to the 768×768 RGB runtime texture.
 
-Run the export from this directory with Python 3 and Pillow installed:
+Run the export from this directory with Python 3 and Pillow 12.1 or newer
+installed — `build-assets.py` uses `Image.get_flattened_data()`, which older
+releases do not provide:
 
 ```sh
+python3 -m pip install 'Pillow>=12.1'
 python3 build-assets.py
 ```

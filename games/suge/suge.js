@@ -1,4 +1,4 @@
-import { COLS, ROWS, SnakeEngine, keyToDirection, tickIntervalForScore } from './logic.js';
+import { COLS, ROWS, SnakeEngine, eventToDirection, tickIntervalForScore } from './logic.js';
 import {
   contentBoxSize,
   createDecorations,
@@ -69,6 +69,9 @@ function readPreviewState() {
 }
 
 const previewState = readPreviewState();
+// Preview runs show scripted numbers for screenshots, so they must never write
+// back to the stored record.
+const previewMode = previewState !== null;
 if (previewState) {
   engine.score = previewState.score;
   record = previewState.high;
@@ -119,7 +122,7 @@ function render() {
 function finishRound() {
   loop.stop();
   record = Math.max(engine.score, record);
-  setRecord(record);
+  if (!previewMode) setRecord(record);
   finalScoreEl.textContent = String(engine.score);
   recordEl.textContent = String(record);
   collisionReasonEl.textContent = engine.collision?.type === 'self'
@@ -186,7 +189,7 @@ function handleDirectionInput(direction) {
 }
 
 window.addEventListener('keydown', (event) => {
-  const direction = keyToDirection(event.key);
+  const direction = eventToDirection(event);
   if (!direction) return;
   event.preventDefault();
   if (engine.gameOver) {

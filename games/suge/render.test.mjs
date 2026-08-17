@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { COLS, PREY_KINDS, ROWS } from './logic.js';
 import {
+  DECORATION_MARGIN_CELLS,
+  FRAME_INSET_CELLS,
   PREY_SPRITES,
   boardFrameInsets,
   collisionMarkerLines,
@@ -75,6 +77,17 @@ test('decorations remain stable when generated with the same random sequence', (
   assert.deepEqual(first, second);
   assert.equal(first.length, 24);
   assert.ok(first.every(({ type }) => type === 'grass' || type === 'pebble'));
+});
+
+test('decorations keep clear of the drawn frame at every extreme', () => {
+  // 0 and 0.999… drive the placement to both bounds of the allowed range.
+  const decorations = createDecorations(40, sequenceRng([0, 0.999999999]), COLS, ROWS);
+  const low = FRAME_INSET_CELLS + DECORATION_MARGIN_CELLS;
+
+  assert.ok(decorations.every(({ x }) => x >= low && x <= COLS - low));
+  assert.ok(decorations.every(({ y }) => y >= low && y <= ROWS - low));
+  assert.ok(decorations.some(({ x }) => x < low + 0.01));
+  assert.ok(decorations.some(({ x }) => x > COLS - low - 0.01));
 });
 
 test('collisionMarkerLines surrounds the exact collision cell', () => {

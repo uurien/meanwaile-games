@@ -78,12 +78,20 @@ export function preySpriteRect(kind, atlasWidth, atlasHeight) {
   };
 }
 
+// The main frame stroke sits one cell in from the canvas edge, and a tuft or
+// pebble at full scale reaches about 0.4 cells from its own centre in any
+// rotation. Keeping that much clearance stops decorations from being drawn on
+// top of the border.
+export const FRAME_INSET_CELLS = 1;
+export const DECORATION_MARGIN_CELLS = 0.45;
+
 export function createDecorations(count, rng, cols, rows) {
+  const edge = FRAME_INSET_CELLS + DECORATION_MARGIN_CELLS;
   const decorations = [];
   for (let i = 0; i < count; i += 1) {
     decorations.push({
-      x: 0.9 + clampedRandom(rng) * Math.max(0.1, cols - 1.8),
-      y: 0.9 + clampedRandom(rng) * Math.max(0.1, rows - 1.8),
+      x: edge + clampedRandom(rng) * Math.max(0.1, cols - edge * 2),
+      y: edge + clampedRandom(rng) * Math.max(0.1, rows - edge * 2),
       type: clampedRandom(rng) < 0.58 ? 'grass' : 'pebble',
       rotation: clampedRandom(rng) * Math.PI * 2,
       scale: 0.72 + clampedRandom(rng) * 0.58,
@@ -163,10 +171,11 @@ function drawBoardFill(ctx, width, height, cellSize) {
 }
 
 export function boardFrameInsets(cellSize) {
+  const mainInset = cellSize * FRAME_INSET_CELLS;
   return [
-    cellSize,
-    cellSize + Math.max(0.8, cellSize * 0.07),
-    cellSize - Math.max(0.5, cellSize * 0.035),
+    mainInset,
+    mainInset + Math.max(0.8, cellSize * 0.07),
+    mainInset - Math.max(0.5, cellSize * 0.035),
   ];
 }
 
