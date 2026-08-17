@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Suge</title>
+  <link rel="stylesheet" href="suge.css" />
+</head>
+<body>
+  <div id="hud">
+    <span id="score" aria-live="polite" aria-atomic="true">SCORE: 0</span>
+    <span id="high">HIGH: 0</span>
+  </div>
+  <div id="stage">
+    <canvas id="board" role="img" aria-label="A hand-drawn snake hunting tiny animals. Use arrow keys or WASD to steer."></canvas>
+  </div>
+  <div id="game-over" class="overlay" role="dialog" aria-modal="true" aria-labelledby="game-over-title" hidden>
+    <div class="game-over-card">
+      <h1 id="game-over-title">Oh, crumbs.</h1>
+      <p id="collision-reason"></p>
+      <p>Score: <span id="final-score"></span> · Record: <span id="record-score"></span></p>
+      <button id="restart" type="button">Try again</button>
+      <p class="hint">Or press an arrow key</p>
+    </div>
+  </div>
+  <script type="module" src="suge.js"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@
     { "id": "circle-tap", "path": "games/circle-tap", "version": "1.0.0" },
     { "id": "meanwaile-runner", "path": "games/meanwaile-runner", "version": "1.0.0" },
     { "id": "meanwaile-maze", "path": "games/meanwaile-maze", "version": "0.1.0" },
-    { "id": "meanwaile-typewall", "path": "games/meanwaile-typewall", "version": "1.0.0" }
+    { "id": "meanwaile-typewall", "path": "games/meanwaile-typewall", "version": "1.0.0" },
+    { "id": "suge", "path": "games/suge", "version": "0.1.0" }
   ]
 }
