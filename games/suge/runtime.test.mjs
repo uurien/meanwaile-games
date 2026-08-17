@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { FrameLoop, HostLifecycle, setTextIfChanged } from './runtime.js';
+import {
+  FrameLoop,
+  HostLifecycle,
+  canRestartFromKeyboard,
+  setTextIfChanged,
+} from './runtime.js';
 
 function fakeAnimationFrames() {
   let nextId = 1;
@@ -165,4 +170,13 @@ test('setTextIfChanged avoids repeated live-region mutations', () => {
   assert.equal(setTextIfChanged(element, 'SCORE: 1'), true);
   assert.equal(setTextIfChanged(element, 'SCORE: 1'), false);
   assert.equal(writes, 1);
+});
+
+test('keyboard restart stays locked for 500ms after game over appears', () => {
+  const shownAt = 1_000;
+
+  assert.equal(canRestartFromKeyboard(shownAt, 1_000), false);
+  assert.equal(canRestartFromKeyboard(shownAt, 1_499), false);
+  assert.equal(canRestartFromKeyboard(shownAt, 1_500), true);
+  assert.equal(canRestartFromKeyboard(null, 2_000), false);
 });

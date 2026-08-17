@@ -24,6 +24,7 @@ test('the entry point and styles reference only bundled resources', async () => 
   const runtime = await readFile(new URL('suge.js', gameRoot), 'utf8');
   const renderer = await readFile(new URL('render.js', gameRoot), 'utf8');
   const bundleSource = [html, css, runtime, renderer].join('\n');
+  const overlayRule = css.match(/\.overlay \{([\s\S]*?)\n\}/)?.[1] ?? '';
 
   assert.match(html, /suge\.css/);
   assert.match(html, /suge\.js/);
@@ -33,6 +34,12 @@ test('the entry point and styles reference only bundled resources', async () => 
   assert.match(runtime, /game:pause/);
   assert.match(runtime, /game:resume/);
   assert.match(runtime, /touchcancel/);
+  assert.match(html, /id="collision-reason"/);
+  assert.match(runtime, /collision: engine\.collision/);
+  assert.match(runtime, /advancePreySpawns\(deltaMs\)/);
+  assert.match(overlayRule, /justify-content:\s*center/);
+  assert.match(overlayRule, /background:\s*transparent/);
+  assert.doesNotMatch(runtime, /dataset\.placement/);
   assert.doesNotMatch(runtime, /^(?:loop\.start\(\)|requestAnimationFrame\()/m);
   assert.doesNotMatch(bundleSource, /https?:\/\//);
   assert.doesNotMatch(renderer, /[🍎🍏🍇🍑🍌🍒🥑🍉]/u);

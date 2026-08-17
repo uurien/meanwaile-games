@@ -5,7 +5,12 @@ import {
   drawScene,
   fitBoardToStage,
 } from './render.js';
-import { FrameLoop, HostLifecycle, setTextIfChanged } from './runtime.js';
+import {
+  FrameLoop,
+  HostLifecycle,
+  canRestartFromKeyboard,
+  setTextIfChanged,
+} from './runtime.js';
 
 const RECORD_KEY = 'suge-record';
 const DECORATION_COUNT = 27;
@@ -19,6 +24,7 @@ const highEl = document.getElementById('high');
 const gameOverEl = document.getElementById('game-over');
 const finalScoreEl = document.getElementById('final-score');
 const recordEl = document.getElementById('record-score');
+const collisionReasonEl = document.getElementById('collision-reason');
 const restartButton = document.getElementById('restart');
 
 const preyAtlas = new Image();
@@ -48,6 +54,7 @@ let boardHeight = 1;
 let cellSize = 1;
 let accumulatorMs = 0;
 let animationMs = 0;
+let gameOverShownAt = null;
 
 function readPreviewState() {
   const params = new URLSearchParams(window.location.search);
@@ -103,7 +110,8 @@ function render() {
     direction: engine.direction,
     decorations,
     preyAtlas,
-    interpolation: Math.min(1, accumulatorMs / interval),
+    collision: engine.collision,
+    interpolation: engine.gameOver ? 1 : Math.min(1, accumulatorMs / interval),
     animationMs,
   });
 }
@@ -114,7 +122,11 @@ function finishRound() {
   setRecord(record);
   finalScoreEl.textContent = String(engine.score);
   recordEl.textContent = String(record);
+  collisionReasonEl.textContent = engine.collision?.type === 'self'
+    ? 'You bit your own tail.'
+    : 'You hit the frame.';
   gameOverEl.hidden = false;
+  gameOverShownAt = performance.now();
   render();
   restartButton.focus({ preventScroll: true });
 }
@@ -122,6 +134,7 @@ function finishRound() {
 function restart() {
   if (!engine.gameOver || !lifecycle.canRestart) return;
   gameOverEl.hidden = true;
+  gameOverShownAt = null;
   engine.reset();
   previousSnake = copySnake(engine.snake);
   decorations = createDecorations(DECORATION_COUNT, Math.random, COLS, ROWS);
@@ -132,6 +145,7 @@ function restart() {
 
 function advance(deltaMs) {
   animationMs += deltaMs;
+  engine.advancePreySpawns(deltaMs);
   accumulatorMs += Math.min(deltaMs, 100);
   let interval = tickIntervalForScore(engine.score);
 
@@ -176,7 +190,7 @@ window.addEventListener('keydown', (event) => {
   if (!direction) return;
   event.preventDefault();
   if (engine.gameOver) {
-    restart();
+    if (canRestartFromKeyboard(gameOverShownAt, performance.now())) restart();
     return;
   }
   handleDirectionInput(direction);

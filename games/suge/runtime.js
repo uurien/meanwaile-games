@@ -76,6 +76,13 @@ export class HostLifecycle {
   }
 }
 
+export const KEYBOARD_RESTART_DELAY_MS = 500;
+
+export function canRestartFromKeyboard(gameOverShownAt, now) {
+  if (!Number.isFinite(gameOverShownAt) || !Number.isFinite(now)) return false;
+  return now - gameOverShownAt >= KEYBOARD_RESTART_DELAY_MS;
+}
+
 export function setTextIfChanged(element, value) {
   if (element.textContent === value) return false;
   element.textContent = value;

@@ -5,7 +5,9 @@ import {
   ACTIVE_PREY_COUNT,
   COLS,
   INITIAL_SNAKE_LENGTH,
+  MAX_PREY_SPAWN_MS,
   MIN_TICK_MS,
+  MIN_PREY_SPAWN_MS,
   PREY_KINDS,
   ROWS,
   START_TICK_MS,
@@ -46,11 +48,11 @@ test('tickIntervalForScore ramps from START_TICK_MS down to MIN_TICK_MS and clam
   assert.ok(mid < START_TICK_MS && mid > MIN_TICK_MS);
 });
 
-test('reset() places a long bent snake moving right', () => {
+test('reset() places a three-segment snake moving right', () => {
   const engine = new SnakeEngine({ rng: sequenceRng([0]) });
 
   assert.equal(engine.snake.length, INITIAL_SNAKE_LENGTH);
-  assert.ok(INITIAL_SNAKE_LENGTH >= 8);
+  assert.equal(INITIAL_SNAKE_LENGTH, 3);
   assert.equal(engine.direction, 'right');
   assert.equal(engine.score, 0);
   assert.equal(engine.gameOver, false);
@@ -62,12 +64,13 @@ test('reset() places a long bent snake moving right', () => {
   }
 });
 
-test('reset() scatters one collectible of every prey kind on unique empty cells', () => {
+test('reset() starts with one collectible and an eight-creature maximum', () => {
   const engine = new SnakeEngine({ rng: sequenceRng([0]) });
 
   assert.equal(ACTIVE_PREY_COUNT, PREY_KINDS.length);
-  assert.equal(engine.prey.length, ACTIVE_PREY_COUNT);
-  assert.deepEqual(engine.prey.map((animal) => animal.kind).sort(), [...PREY_KINDS].sort());
+  assert.equal(ACTIVE_PREY_COUNT, 8);
+  assert.equal(engine.prey.length, 1);
+  assert.ok(PREY_KINDS.includes(engine.prey[0].kind));
 
   const occupied = new Set(engine.snake.map((seg) => `${seg.x},${seg.y}`));
   for (const animal of engine.prey) {
@@ -102,6 +105,36 @@ test('reset() is deterministic when supplied the same RNG sequence', () => {
   const second = new SnakeEngine({ rng: sequenceRng(values) });
 
   assert.deepEqual(first.prey, second.prey);
+  assert.equal(first.nextPreySpawnInMs, second.nextPreySpawnInMs);
+});
+
+test('advancePreySpawns adds one creature after each random 0-5 second wait', () => {
+  const engine = new SnakeEngine({ rng: sequenceRng([0]) });
+
+  assert.equal(MIN_PREY_SPAWN_MS, 0);
+  assert.equal(engine.nextPreySpawnInMs, 0);
+  assert.equal(engine.advancePreySpawns(1), 1);
+  assert.equal(engine.prey.length, 2);
+  assert.equal(engine.nextPreySpawnInMs, 0);
+  assert.equal(engine.advancePreySpawns(MAX_PREY_SPAWN_MS * 2), 1);
+  assert.equal(engine.prey.length, 3, 'a delayed frame should still reveal only one creature');
+
+  const slowEngine = new SnakeEngine({ rng: sequenceRng([0, 0, 0.999999999]) });
+  assert.ok(slowEngine.nextPreySpawnInMs > MAX_PREY_SPAWN_MS - 1);
+  assert.ok(slowEngine.nextPreySpawnInMs <= MAX_PREY_SPAWN_MS);
+});
+
+test('advancePreySpawns stops at eight unique creature kinds', () => {
+  const engine = new SnakeEngine({ rng: sequenceRng([0]) });
+
+  for (let i = 1; i < ACTIVE_PREY_COUNT; i += 1) {
+    engine.advancePreySpawns(1);
+  }
+  assert.equal(engine.prey.length, ACTIVE_PREY_COUNT);
+  assert.deepEqual(engine.prey.map((animal) => animal.kind).sort(), [...PREY_KINDS].sort());
+
+  engine.advancePreySpawns(MAX_PREY_SPAWN_MS * 2);
+  assert.equal(engine.prey.length, ACTIVE_PREY_COUNT);
 });
 
 test('setDirection ignores a direct reversal into the snake itself', () => {
@@ -128,11 +161,10 @@ test('step() advances the snake by one cell and keeps its length when no prey is
   assert.deepEqual(engine.snake[0], { x: head.x + 1, y: head.y });
 });
 
-test('step() grows, scores, and replenishes the eaten prey kind', () => {
+test('step() grows and scores without immediately replenishing eaten prey', () => {
   const engine = new SnakeEngine({ rng: sequenceRng([0]) });
   const head = engine.snake[0];
   engine.prey[0] = { x: head.x + 1, y: head.y, kind: 'mouse' };
-  const beforeKinds = engine.prey.map((animal) => animal.kind).sort();
   const beforeLength = engine.snake.length;
 
   engine.step();
@@ -140,8 +172,7 @@ test('step() grows, scores, and replenishes the eaten prey kind', () => {
   assert.equal(engine.score, 1);
   assert.equal(engine.snake.length, beforeLength + 1);
   assert.deepEqual(engine.snake[0], { x: head.x + 1, y: head.y });
-  assert.equal(engine.prey.length, ACTIVE_PREY_COUNT);
-  assert.deepEqual(engine.prey.map((animal) => animal.kind).sort(), beforeKinds);
+  assert.equal(engine.prey.length, 0);
 
   const occupied = new Set(engine.snake.map((seg) => `${seg.x},${seg.y}`));
   for (const animal of engine.prey) {
@@ -153,7 +184,11 @@ test('step() grows, scores, and replenishes the eaten prey kind', () => {
 
 test('step() ends the game when the snake leaves the board', () => {
   const engine = new SnakeEngine({ rng: sequenceRng([0]) });
-  engine.snake = [{ x: COLS - 1, y: 0 }, { x: COLS - 2, y: 0 }, { x: COLS - 3, y: 0 }];
+  engine.snake = [
+    { x: COLS - 2, y: 5 },
+    { x: COLS - 3, y: 5 },
+    { x: COLS - 4, y: 5 },
+  ];
   engine.direction = 'right';
   engine.pendingDirection = 'right';
   engine.prey = [{ x: 0, y: ROWS - 1, kind: 'worm' }];
@@ -161,6 +196,12 @@ test('step() ends the game when the snake leaves the board', () => {
   engine.step();
 
   assert.equal(engine.gameOver, true);
+  assert.deepEqual(engine.snake[0], { x: COLS - 2, y: 5 });
+  assert.deepEqual(engine.collision, {
+    type: 'wall',
+    at: { x: COLS - 1, y: 5 },
+    impact: { x: COLS - 1, y: 5.5 },
+  });
 });
 
 test('step() ends the game on the inner frame before the drawn head is clipped', () => {
@@ -174,6 +215,11 @@ test('step() ends the game on the inner frame before the drawn head is clipped',
 
   assert.equal(engine.gameOver, true);
   assert.deepEqual(engine.snake[0], { x: 1, y: 5 });
+  assert.deepEqual(engine.collision, {
+    type: 'wall',
+    at: { x: 0, y: 5 },
+    impact: { x: 1, y: 5.5 },
+  });
 });
 
 test('step() ends the game when the snake bites its own body', () => {
@@ -192,6 +238,9 @@ test('step() ends the game when the snake bites its own body', () => {
   engine.step();
 
   assert.equal(engine.gameOver, true);
+  assert.deepEqual(engine.snake[0], { x: 1.5, y: 1 });
+  assert.deepEqual(engine.snake[1], { x: 2, y: 1 });
+  assert.deepEqual(engine.collision, { type: 'self', at: { x: 2, y: 1 } });
 });
 
 test('step() allows moving into the current tail cell, since it vacates that step', () => {
@@ -244,12 +293,14 @@ test('spawnPrey falls back to any exact empty cell when no guttered cell remains
 test('reset() after a game over restores a fresh playable state', () => {
   const engine = new SnakeEngine();
   engine.gameOver = true;
+  engine.collision = { type: 'wall', at: { x: 0, y: 5 } };
   engine.score = 12;
 
   engine.reset();
 
   assert.equal(engine.gameOver, false);
+  assert.equal(engine.collision, null);
   assert.equal(engine.score, 0);
   assert.equal(engine.snake.length, INITIAL_SNAKE_LENGTH);
-  assert.equal(engine.prey.length, ACTIVE_PREY_COUNT);
+  assert.equal(engine.prey.length, 1);
 });

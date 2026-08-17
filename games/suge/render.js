@@ -3,6 +3,7 @@ export const PAPER_WASH = 'rgba(250, 246, 235, 0.34)';
 export const BODY_FILL = '#ddd4c2';
 export const GRAPHITE_GHOST = 'rgba(76, 72, 64, 0.24)';
 export const DECORATION_INK = 'rgba(73, 70, 63, 0.58)';
+export const COLLISION_INK = '#9b5147';
 
 export const PREY_SPRITES = {
   mouse: { column: 0, row: 0 },
@@ -91,6 +92,45 @@ export function createDecorations(count, rng, cols, rows) {
   return decorations;
 }
 
+export function collisionMarkerLines(collision, cellSize) {
+  if (!collision?.at || cellSize <= 0) return [];
+  const centerX = (collision.impact?.x ?? collision.at.x + 0.5) * cellSize;
+  const centerY = (collision.impact?.y ?? collision.at.y + 0.5) * cellSize;
+  const innerRadius = cellSize * 0.36;
+  const outerRadius = cellSize * 0.68;
+
+  return Array.from({ length: 8 }, (_, index) => {
+    const angle = index * Math.PI / 4;
+    return {
+      from: {
+        x: centerX + Math.cos(angle) * innerRadius,
+        y: centerY + Math.sin(angle) * innerRadius,
+      },
+      to: {
+        x: centerX + Math.cos(angle) * outerRadius,
+        y: centerY + Math.sin(angle) * outerRadius,
+      },
+    };
+  });
+}
+
+export function drawCollisionMarker(ctx, collision, cellSize) {
+  const lines = collisionMarkerLines(collision, cellSize);
+  if (lines.length === 0) return;
+
+  ctx.save();
+  ctx.strokeStyle = COLLISION_INK;
+  ctx.lineWidth = Math.max(1.2, cellSize * 0.085);
+  ctx.lineCap = 'round';
+  for (const line of lines) {
+    ctx.beginPath();
+    ctx.moveTo(line.from.x, line.from.y);
+    ctx.lineTo(line.to.x, line.to.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function roundedRectanglePath(ctx, width, height, inset, radius, phase = 0) {
   const left = inset + noise(phase + 1) * 0.45;
   const top = inset + noise(phase + 2) * 0.45;
@@ -122,12 +162,21 @@ function drawBoardFill(ctx, width, height, cellSize) {
   ctx.fill();
 }
 
+export function boardFrameInsets(cellSize) {
+  return [
+    cellSize,
+    cellSize + Math.max(0.8, cellSize * 0.07),
+    cellSize - Math.max(0.5, cellSize * 0.035),
+  ];
+}
+
 function drawBoardFrame(ctx, width, height, cellSize) {
   const radius = Math.max(13, cellSize * 0.72);
+  const [mainInset, innerInset, outerInset] = boardFrameInsets(cellSize);
   const passes = [
-    { inset: 2.8, phase: 31, alpha: 0.82, width: 1.35 },
-    { inset: 4.2, phase: 47, alpha: 0.43, width: 0.9 },
-    { inset: 2.1, phase: 73, alpha: 0.25, width: 0.75 },
+    { inset: mainInset, phase: 31, alpha: 0.82, width: 1.35 },
+    { inset: innerInset, phase: 47, alpha: 0.43, width: 0.9 },
+    { inset: outerInset, phase: 73, alpha: 0.25, width: 0.75 },
   ];
 
   ctx.save();
@@ -394,6 +443,7 @@ export function drawScene(ctx, {
   direction,
   decorations,
   preyAtlas,
+  collision,
   interpolation = 1,
   animationMs = 0,
 }) {
@@ -403,4 +453,5 @@ export function drawScene(ctx, {
   for (const animal of prey ?? []) drawPrey(ctx, animal, cellSize, preyAtlas, animationMs);
   drawSnake(ctx, snake, previousSnake, cellSize, direction, interpolation, animationMs);
   drawBoardFrame(ctx, cols * cellSize, rows * cellSize, cellSize);
+  drawCollisionMarker(ctx, collision, cellSize);
 }

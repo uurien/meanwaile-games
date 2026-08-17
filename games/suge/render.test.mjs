@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { COLS, PREY_KINDS, ROWS } from './logic.js';
 import {
   PREY_SPRITES,
+  boardFrameInsets,
+  collisionMarkerLines,
   contentBoxSize,
   createDecorations,
   fitBoardToStage,
@@ -73,4 +75,29 @@ test('decorations remain stable when generated with the same random sequence', (
   assert.deepEqual(first, second);
   assert.equal(first.length, 24);
   assert.ok(first.every(({ type }) => type === 'grass' || type === 'pebble'));
+});
+
+test('collisionMarkerLines surrounds the exact collision cell', () => {
+  const lines = collisionMarkerLines({ type: 'wall', at: { x: 0, y: 5 } }, 20);
+
+  assert.equal(lines.length, 8);
+  assert.deepEqual(lines[0], { from: { x: 17.2, y: 110 }, to: { x: 23.6, y: 110 } });
+  assert.deepEqual(collisionMarkerLines(null, 20), []);
+});
+
+test('wall collision markers use the logical frame impact point', () => {
+  const lines = collisionMarkerLines({
+    type: 'wall',
+    at: { x: 0, y: 5 },
+    impact: { x: 1, y: 5.5 },
+  }, 20);
+
+  assert.deepEqual(lines[0], { from: { x: 27.2, y: 110 }, to: { x: 33.6, y: 110 } });
+});
+
+test('the visible frame follows the snake playable boundary', () => {
+  const insets = boardFrameInsets(20);
+
+  assert.deepEqual(insets, [20, 21.4, 19.3]);
+  assert.ok(insets.every((inset) => inset >= 19 && inset <= 22));
 });
